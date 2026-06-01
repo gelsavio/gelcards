@@ -834,6 +834,26 @@ function pularParaMusica(idBloco) {
     document.getElementById("seletor-musica").value = "";
 }
 
+// Regex central de acorde — usada para detectar e envolver spans
+const REGEX_ACORDE = /\b([A-G][#b]?(?:m|maj|min|aug|dim|sus|add)?(?:2|4|5|6|7|9|11|13)?(?:\/[A-G][#b]?)?)\b(?=[^#b]|$)/g;
+const REGEX_LINHA_ACORDES = /^(?:[A-G][#b]?(?:m|maj|min|aug|dim|sus|add)?(?:\d+)?(?:\/[A-G][#b]?)?\s+)*[A-G][#b]?(?:m|maj|min|aug|dim|sus|add)?(?:\d+)?(?:\/[A-G][#b]?)?$/;
+
+function envolverAcordesEmSpans(linha) {
+    // Substitui de trás para frente para não deslocar índices
+    const RE = /([A-G][#b]?(?:maj|min|aug|dim|sus|add)?(?:2|4|5|6|7|9|11|13)?(?:\/[A-G][#b]?)?)/g;
+    return linha.replace(RE, (match, p1, offset, str) => {
+        // Checar que não é parte de uma palavra (ex: "Domingo" → "D" não é acorde)
+        const antes = str[offset - 1] || ' ';
+        const depois = str[offset + match.length] || ' ';
+        const naoEPalavra = /[\s\(\[\-,]/.test(antes) || offset === 0;
+        const naoTerminaEmLetra = !/[a-z]/.test(depois);
+        if (naoEPalavra && naoTerminaEmLetra) {
+            return `<span class="chord">${match}</span>`;
+        }
+        return match;
+    });
+}
+
 function processarLinhasTexto(texto) {
     return texto.split('\n').map(linha => {
         const lim = linha.trim();
@@ -841,10 +861,9 @@ function processarLinhasTexto(texto) {
         const temMarcadores = lim.includes('[') || lim.includes('(');
         const totalEspacos = (linha.match(/ /g) || []).length;
         const ehEspacada = totalEspacos > lim.length * 0.25;
-        const ehLinhaDeAcordes = /^(([A-G][#b]?(m|maj|min|aug|dim|sus|add)?\d*(\/?[A-G][#b]?)?)[\s]+)*([A-G][#b]?(m|maj|min|aug|dim|sus|add)?\d*(\/?[A-G][#b]?)?)$/.test(lim);
+        const ehLinhaDeAcordes = REGEX_LINHA_ACORDES.test(lim);
         if (temMarcadores || ehEspacada || ehLinhaDeAcordes) {
-            const inlineClean = linha.replace(/\b([A-G][#b]?(m|maj|min|aug|dim|sus|add)?(2|4|5|6|7|9|11|13)?(\/?[A-G][#b]?)?)\b/g, '<span class="chord">$1</span>');
-            return `<div class="chord-line">${inlineClean}</div>`;
+            return `<div class="chord-line">${envolverAcordesEmSpans(linha)}</div>`;
         }
         return `<div>${linha}</div>`;
     }).join('');
@@ -1132,107 +1151,209 @@ function imprimirListaAtiva() {
 // =========================================================================
 const BANCO_ACORDES = {
     // ── MAIORES ──────────────────────────────────────────────────────────
-    "C":   { frets: [-1,3,2,0,1,0], fingers: [0,3,2,0,1,0], barre: null, baseFret: 1 },
-    "D":   { frets: [-1,-1,0,2,3,2], fingers: [0,0,0,1,3,2], barre: null, baseFret: 1 },
-    "E":   { frets: [0,2,2,1,0,0], fingers: [0,2,3,1,0,0], barre: null, baseFret: 1 },
-    "F":   { frets: [1,1,2,3,3,1], fingers: [1,1,2,3,4,1], barre: { fret:1, from:0, to:5 }, baseFret: 1 },
-    "G":   { frets: [3,2,0,0,0,3], fingers: [2,1,0,0,0,3], barre: null, baseFret: 1 },
-    "A":   { frets: [-1,0,2,2,2,0], fingers: [0,0,1,2,3,0], barre: null, baseFret: 1 },
-    "B":   { frets: [-1,2,4,4,4,2], fingers: [0,1,2,3,4,1], barre: { fret:2, from:1, to:5 }, baseFret: 2 },
+    "C":    { frets: [-1,3,2,0,1,0],   fingers: [0,3,2,0,1,0],   barre: null,                      baseFret: 1 },
+    "D":    { frets: [-1,-1,0,2,3,2],  fingers: [0,0,0,1,3,2],   barre: null,                      baseFret: 1 },
+    "E":    { frets: [0,2,2,1,0,0],    fingers: [0,2,3,1,0,0],   barre: null,                      baseFret: 1 },
+    "F":    { frets: [1,1,2,3,3,1],    fingers: [1,1,2,3,4,1],   barre: {fret:1,from:0,to:5},      baseFret: 1 },
+    "G":    { frets: [3,2,0,0,0,3],    fingers: [2,1,0,0,0,3],   barre: null,                      baseFret: 1 },
+    "A":    { frets: [-1,0,2,2,2,0],   fingers: [0,0,1,2,3,0],   barre: null,                      baseFret: 1 },
+    "B":    { frets: [-1,2,4,4,4,2],   fingers: [0,1,2,3,4,1],   barre: {fret:2,from:1,to:5},      baseFret: 2 },
 
     // ── MENORES ──────────────────────────────────────────────────────────
-    "Am":  { frets: [-1,0,2,2,1,0], fingers: [0,0,2,3,1,0], barre: null, baseFret: 1 },
-    "Bm":  { frets: [-1,2,4,4,3,2], fingers: [0,1,3,4,2,1], barre: { fret:2, from:1, to:5 }, baseFret: 2 },
-    "Cm":  { frets: [-1,3,5,5,4,3], fingers: [0,1,3,4,2,1], barre: { fret:3, from:1, to:5 }, baseFret: 3 },
-    "Dm":  { frets: [-1,-1,0,2,3,1], fingers: [0,0,0,2,3,1], barre: null, baseFret: 1 },
-    "Em":  { frets: [0,2,2,0,0,0], fingers: [0,2,3,0,0,0], barre: null, baseFret: 1 },
-    "Fm":  { frets: [1,1,3,3,2,1], fingers: [1,1,3,4,2,1], barre: { fret:1, from:0, to:5 }, baseFret: 1 },
-    "Gm":  { frets: [3,5,5,3,3,3], fingers: [1,3,4,1,1,1], barre: { fret:3, from:0, to:5 }, baseFret: 3 },
+    "Am":   { frets: [-1,0,2,2,1,0],   fingers: [0,0,2,3,1,0],   barre: null,                      baseFret: 1 },
+    "Bm":   { frets: [-1,2,4,4,3,2],   fingers: [0,1,3,4,2,1],   barre: {fret:2,from:1,to:5},      baseFret: 2 },
+    "Cm":   { frets: [-1,3,5,5,4,3],   fingers: [0,1,3,4,2,1],   barre: {fret:3,from:1,to:5},      baseFret: 3 },
+    "Dm":   { frets: [-1,-1,0,2,3,1],  fingers: [0,0,0,2,3,1],   barre: null,                      baseFret: 1 },
+    "Em":   { frets: [0,2,2,0,0,0],    fingers: [0,2,3,0,0,0],   barre: null,                      baseFret: 1 },
+    "Fm":   { frets: [1,1,3,3,2,1],    fingers: [1,1,3,4,2,1],   barre: {fret:1,from:0,to:5},      baseFret: 1 },
+    "Gm":   { frets: [3,5,5,3,3,3],    fingers: [1,3,4,1,1,1],   barre: {fret:3,from:0,to:5},      baseFret: 3 },
 
-    // ── COM SUSTENIDO (#) ─────────────────────────────────────────────────
-    "C#":  { frets: [-1,4,6,6,6,4], fingers: [0,1,3,4,4,1], barre: { fret:4, from:1, to:5 }, baseFret: 4 },
-    "C#m": { frets: [-1,4,6,6,5,4], fingers: [0,1,3,4,2,1], barre: { fret:4, from:1, to:5 }, baseFret: 4 },
-    "D#":  { frets: [-1,-1,1,3,4,3], fingers: [0,0,1,2,4,3], barre: null, baseFret: 1 },
-    "D#m": { frets: [-1,-1,1,3,4,2], fingers: [0,0,1,3,4,2], barre: null, baseFret: 1 },
-    "F#":  { frets: [2,2,4,4,4,2], fingers: [1,1,3,4,4,1], barre: { fret:2, from:0, to:5 }, baseFret: 2 },
-    "F#m": { frets: [2,2,4,4,3,2], fingers: [1,1,3,4,2,1], barre: { fret:2, from:0, to:5 }, baseFret: 2 },
-    "G#":  { frets: [4,4,6,6,6,4], fingers: [1,1,3,4,4,1], barre: { fret:4, from:0, to:5 }, baseFret: 4 },
-    "G#m": { frets: [4,4,6,6,5,4], fingers: [1,1,3,4,2,1], barre: { fret:4, from:0, to:5 }, baseFret: 4 },
-    "A#":  { frets: [-1,1,3,3,3,1], fingers: [0,1,3,4,4,1], barre: { fret:1, from:1, to:5 }, baseFret: 1 },
-    "A#m": { frets: [-1,1,3,3,2,1], fingers: [0,1,3,4,2,1], barre: { fret:1, from:1, to:5 }, baseFret: 1 },
+    // ── SUSTENIDOS MAIORES ───────────────────────────────────────────────
+    "C#":   { frets: [-1,4,6,6,6,4],   fingers: [0,1,3,4,4,1],   barre: {fret:4,from:1,to:5},      baseFret: 4 },
+    "D#":   { frets: [-1,-1,1,3,4,3],  fingers: [0,0,1,2,4,3],   barre: null,                      baseFret: 1 },
+    "F#":   { frets: [2,2,4,4,4,2],    fingers: [1,1,3,4,4,1],   barre: {fret:2,from:0,to:5},      baseFret: 2 },
+    "G#":   { frets: [4,4,6,6,6,4],    fingers: [1,1,3,4,4,1],   barre: {fret:4,from:0,to:5},      baseFret: 4 },
+    "A#":   { frets: [-1,1,3,3,3,1],   fingers: [0,1,3,4,4,1],   barre: {fret:1,from:1,to:5},      baseFret: 1 },
 
-    // ── COM BEMOL (b) ─────────────────────────────────────────────────────
-    "Db":  { frets: [-1,4,6,6,6,4], fingers: [0,1,3,4,4,1], barre: { fret:4, from:1, to:5 }, baseFret: 4 },
-    "Dbm": { frets: [-1,4,6,6,5,4], fingers: [0,1,3,4,2,1], barre: { fret:4, from:1, to:5 }, baseFret: 4 },
-    "Eb":  { frets: [-1,-1,1,3,4,3], fingers: [0,0,1,2,4,3], barre: null, baseFret: 1 },
-    "Ebm": { frets: [-1,-1,1,3,4,2], fingers: [0,0,1,3,4,2], barre: null, baseFret: 1 },
-    "Gb":  { frets: [2,2,4,4,4,2], fingers: [1,1,3,4,4,1], barre: { fret:2, from:0, to:5 }, baseFret: 2 },
-    "Gbm": { frets: [2,2,4,4,3,2], fingers: [1,1,3,4,2,1], barre: { fret:2, from:0, to:5 }, baseFret: 2 },
-    "Ab":  { frets: [4,4,6,6,6,4], fingers: [1,1,3,4,4,1], barre: { fret:4, from:0, to:5 }, baseFret: 4 },
-    "Abm": { frets: [4,4,6,6,5,4], fingers: [1,1,3,4,2,1], barre: { fret:4, from:0, to:5 }, baseFret: 4 },
-    "Bb":  { frets: [-1,1,3,3,3,1], fingers: [0,1,3,4,4,1], barre: { fret:1, from:1, to:5 }, baseFret: 1 },
-    "Bbm": { frets: [-1,1,3,3,2,1], fingers: [0,1,3,4,2,1], barre: { fret:1, from:1, to:5 }, baseFret: 1 },
+    // ── SUSTENIDOS MENORES ───────────────────────────────────────────────
+    "C#m":  { frets: [-1,4,6,6,5,4],   fingers: [0,1,3,4,2,1],   barre: {fret:4,from:1,to:5},      baseFret: 4 },
+    "D#m":  { frets: [-1,-1,1,3,4,2],  fingers: [0,0,1,3,4,2],   barre: null,                      baseFret: 1 },
+    "F#m":  { frets: [2,2,4,4,3,2],    fingers: [1,1,3,4,2,1],   barre: {fret:2,from:0,to:5},      baseFret: 2 },
+    "G#m":  { frets: [4,4,6,6,5,4],    fingers: [1,1,3,4,2,1],   barre: {fret:4,from:0,to:5},      baseFret: 4 },
+    "A#m":  { frets: [-1,1,3,3,2,1],   fingers: [0,1,3,4,2,1],   barre: {fret:1,from:1,to:5},      baseFret: 1 },
 
-    // ── COM SÉTIMA (7) ────────────────────────────────────────────────────
-    "C7":  { frets: [-1,3,2,3,1,0], fingers: [0,3,2,4,1,0], barre: null, baseFret: 1 },
-    "D7":  { frets: [-1,-1,0,2,1,2], fingers: [0,0,0,2,1,3], barre: null, baseFret: 1 },
-    "E7":  { frets: [0,2,0,1,0,0], fingers: [0,2,0,1,0,0], barre: null, baseFret: 1 },
-    "F7":  { frets: [1,1,2,1,1,1], fingers: [1,1,2,1,1,1], barre: { fret:1, from:0, to:5 }, baseFret: 1 },
-    "G7":  { frets: [3,2,0,0,0,1], fingers: [3,2,0,0,0,1], barre: null, baseFret: 1 },
-    "A7":  { frets: [-1,0,2,0,2,0], fingers: [0,0,2,0,3,0], barre: null, baseFret: 1 },
-    "B7":  { frets: [-1,2,1,2,0,2], fingers: [0,2,1,3,0,4], barre: null, baseFret: 1 },
-    "Am7": { frets: [-1,0,2,0,1,0], fingers: [0,0,2,0,1,0], barre: null, baseFret: 1 },
-    "Em7": { frets: [0,2,2,0,3,0], fingers: [0,2,3,0,4,0], barre: null, baseFret: 1 },
-    "Dm7": { frets: [-1,-1,0,2,1,1], fingers: [0,0,0,2,1,1], barre: { fret:1, from:3, to:5 }, baseFret: 1 },
+    // ── BEMÓIS (aliases) ─────────────────────────────────────────────────
+    "Db":   { frets: [-1,4,6,6,6,4],   fingers: [0,1,3,4,4,1],   barre: {fret:4,from:1,to:5},      baseFret: 4 },
+    "Eb":   { frets: [-1,-1,1,3,4,3],  fingers: [0,0,1,2,4,3],   barre: null,                      baseFret: 1 },
+    "Gb":   { frets: [2,2,4,4,4,2],    fingers: [1,1,3,4,4,1],   barre: {fret:2,from:0,to:5},      baseFret: 2 },
+    "Ab":   { frets: [4,4,6,6,6,4],    fingers: [1,1,3,4,4,1],   barre: {fret:4,from:0,to:5},      baseFret: 4 },
+    "Bb":   { frets: [-1,1,3,3,3,1],   fingers: [0,1,3,4,4,1],   barre: {fret:1,from:1,to:5},      baseFret: 1 },
+    "Dbm":  { frets: [-1,4,6,6,5,4],   fingers: [0,1,3,4,2,1],   barre: {fret:4,from:1,to:5},      baseFret: 4 },
+    "Ebm":  { frets: [-1,-1,1,3,4,2],  fingers: [0,0,1,3,4,2],   barre: null,                      baseFret: 1 },
+    "Gbm":  { frets: [2,2,4,4,3,2],    fingers: [1,1,3,4,2,1],   barre: {fret:2,from:0,to:5},      baseFret: 2 },
+    "Abm":  { frets: [4,4,6,6,5,4],    fingers: [1,1,3,4,2,1],   barre: {fret:4,from:0,to:5},      baseFret: 4 },
+    "Bbm":  { frets: [-1,1,3,3,2,1],   fingers: [0,1,3,4,2,1],   barre: {fret:1,from:1,to:5},      baseFret: 1 },
 
-    // ── MAIORES COM SÉTIMA (maj7) ─────────────────────────────────────────
-    "Cmaj7": { frets: [-1,3,2,0,0,0], fingers: [0,3,2,0,0,0], barre: null, baseFret: 1 },
-    "Dmaj7": { frets: [-1,-1,0,2,2,2], fingers: [0,0,0,1,2,3], barre: null, baseFret: 1 },
-    "Emaj7": { frets: [0,2,1,1,0,0], fingers: [0,2,1,1,0,0], barre: null, baseFret: 1 },
-    "Fmaj7": { frets: [-1,-1,3,2,1,0], fingers: [0,0,3,2,1,0], barre: null, baseFret: 1 },
-    "Gmaj7": { frets: [3,2,0,0,0,2], fingers: [2,1,0,0,0,3], barre: null, baseFret: 1 },
-    "Amaj7": { frets: [-1,0,2,1,2,0], fingers: [0,0,2,1,3,0], barre: null, baseFret: 1 },
+    // ── DOMINANTES (7) ───────────────────────────────────────────────────
+    "C7":   { frets: [-1,3,2,3,1,0],   fingers: [0,3,2,4,1,0],   barre: null,                      baseFret: 1 },
+    "D7":   { frets: [-1,-1,0,2,1,2],  fingers: [0,0,0,2,1,3],   barre: null,                      baseFret: 1 },
+    "E7":   { frets: [0,2,0,1,0,0],    fingers: [0,2,0,1,0,0],   barre: null,                      baseFret: 1 },
+    "F7":   { frets: [1,1,2,1,1,1],    fingers: [1,1,2,1,1,1],   barre: {fret:1,from:0,to:5},      baseFret: 1 },
+    "G7":   { frets: [3,2,0,0,0,1],    fingers: [3,2,0,0,0,1],   barre: null,                      baseFret: 1 },
+    "A7":   { frets: [-1,0,2,0,2,0],   fingers: [0,0,2,0,3,0],   barre: null,                      baseFret: 1 },
+    "B7":   { frets: [-1,2,1,2,0,2],   fingers: [0,2,1,3,0,4],   barre: null,                      baseFret: 1 },
+    "C#7":  { frets: [-1,4,3,4,2,4],   fingers: [0,2,1,3,0,4],   barre: null,                      baseFret: 2 },
+    "D#7":  { frets: [-1,-1,1,3,2,3],  fingers: [0,0,1,3,2,4],   barre: null,                      baseFret: 1 },
+    "F#7":  { frets: [2,2,4,2,4,2],    fingers: [1,1,3,1,4,1],   barre: {fret:2,from:0,to:5},      baseFret: 2 },
+    "G#7":  { frets: [4,4,6,4,6,4],    fingers: [1,1,3,1,4,1],   barre: {fret:4,from:0,to:5},      baseFret: 4 },
+    "A#7":  { frets: [-1,1,3,1,3,1],   fingers: [0,1,3,1,4,1],   barre: {fret:1,from:1,to:5},      baseFret: 1 },
+    "Bb7":  { frets: [-1,1,3,1,3,1],   fingers: [0,1,3,1,4,1],   barre: {fret:1,from:1,to:5},      baseFret: 1 },
+    "Eb7":  { frets: [-1,-1,1,3,2,3],  fingers: [0,0,1,3,2,4],   barre: null,                      baseFret: 1 },
+    "Ab7":  { frets: [4,4,6,4,6,4],    fingers: [1,1,3,1,4,1],   barre: {fret:4,from:0,to:5},      baseFret: 4 },
 
-    // ── SUSPENSOS E OUTROS ────────────────────────────────────────────────
-    "Csus2":  { frets: [-1,3,0,0,1,3], fingers: [0,2,0,0,1,4], barre: null, baseFret: 1 },
-    "Dsus2":  { frets: [-1,-1,0,2,3,0], fingers: [0,0,0,1,2,0], barre: null, baseFret: 1 },
-    "Asus2":  { frets: [-1,0,2,2,0,0], fingers: [0,0,1,2,0,0], barre: null, baseFret: 1 },
-    "Dsus4":  { frets: [-1,-1,0,2,3,3], fingers: [0,0,0,1,2,3], barre: null, baseFret: 1 },
-    "Esus4":  { frets: [0,2,2,2,0,0], fingers: [0,1,2,3,0,0], barre: null, baseFret: 1 },
-    "Asus4":  { frets: [-1,0,2,2,3,0], fingers: [0,0,1,2,3,0], barre: null, baseFret: 1 },
-    "Cadd9":  { frets: [-1,3,2,0,3,0], fingers: [0,2,1,0,3,0], barre: null, baseFret: 1 },
-    "Gadd9":  { frets: [3,2,0,2,0,3], fingers: [2,1,0,3,0,4], barre: null, baseFret: 1 },
-    "Dadd9":  { frets: [-1,-1,0,2,3,0], fingers: [0,0,0,1,2,0], barre: null, baseFret: 1 },
-    "Cdim":   { frets: [-1,3,4,5,4,-1], fingers: [0,1,2,4,3,0], barre: null, baseFret: 3 },
-    "Ddim":   { frets: [-1,-1,0,1,0,1], fingers: [0,0,0,1,0,2], barre: null, baseFret: 1 },
-    "Edim":   { frets: [0,1,2,3,2,-1], fingers: [0,1,2,4,3,0], barre: null, baseFret: 1 },
-    "Caug":   { frets: [-1,3,2,1,1,0], fingers: [0,4,3,1,2,0], barre: null, baseFret: 1 },
-    "Daug":   { frets: [-1,-1,0,3,3,2], fingers: [0,0,0,2,3,1], barre: null, baseFret: 1 },
-    "Eaug":   { frets: [0,3,2,1,1,0], fingers: [0,4,3,2,1,0], barre: null, baseFret: 1 },
+    // ── MENORES COM 7 (m7) ────────────────────────────────────────────────
+    "Am7":  { frets: [-1,0,2,0,1,0],   fingers: [0,0,2,0,1,0],   barre: null,                      baseFret: 1 },
+    "Bm7":  { frets: [-1,2,4,2,3,2],   fingers: [0,1,3,1,2,1],   barre: {fret:2,from:1,to:5},      baseFret: 2 },
+    "Cm7":  { frets: [-1,3,5,3,4,3],   fingers: [0,1,3,1,2,1],   barre: {fret:3,from:1,to:5},      baseFret: 3 },
+    "Dm7":  { frets: [-1,-1,0,2,1,1],  fingers: [0,0,0,2,1,1],   barre: {fret:1,from:3,to:5},      baseFret: 1 },
+    "Em7":  { frets: [0,2,2,0,3,0],    fingers: [0,2,3,0,4,0],   barre: null,                      baseFret: 1 },
+    "Fm7":  { frets: [1,1,3,1,2,1],    fingers: [1,1,3,1,2,1],   barre: {fret:1,from:0,to:5},      baseFret: 1 },
+    "Gm7":  { frets: [3,5,3,3,3,3],    fingers: [1,3,1,1,1,1],   barre: {fret:3,from:0,to:5},      baseFret: 3 },
+    "C#m7": { frets: [-1,4,6,4,5,4],   fingers: [0,1,3,1,2,1],   barre: {fret:4,from:1,to:5},      baseFret: 4 },
+    "F#m7": { frets: [2,2,4,2,3,2],    fingers: [1,1,3,1,2,1],   barre: {fret:2,from:0,to:5},      baseFret: 2 },
+    "G#m7": { frets: [4,4,6,4,5,4],    fingers: [1,1,3,1,2,1],   barre: {fret:4,from:0,to:5},      baseFret: 4 },
+    "A#m7": { frets: [-1,1,3,1,2,1],   fingers: [0,1,3,1,2,1],   barre: {fret:1,from:1,to:5},      baseFret: 1 },
+    "Bbm7": { frets: [-1,1,3,1,2,1],   fingers: [0,1,3,1,2,1],   barre: {fret:1,from:1,to:5},      baseFret: 1 },
+    "Ebm7": { frets: [-1,-1,1,3,2,2],  fingers: [0,0,1,4,2,3],   barre: null,                      baseFret: 1 },
+    "Abm7": { frets: [4,4,6,4,5,4],    fingers: [1,1,3,1,2,1],   barre: {fret:4,from:0,to:5},      baseFret: 4 },
+
+    // ── MAIORES COM 7 (maj7) ──────────────────────────────────────────────
+    "Cmaj7":  { frets: [-1,3,2,0,0,0], fingers: [0,3,2,0,0,0],   barre: null,                      baseFret: 1 },
+    "Dmaj7":  { frets: [-1,-1,0,2,2,2],fingers: [0,0,0,1,2,3],   barre: null,                      baseFret: 1 },
+    "Emaj7":  { frets: [0,2,1,1,0,0],  fingers: [0,2,1,1,0,0],   barre: null,                      baseFret: 1 },
+    "Fmaj7":  { frets: [-1,-1,3,2,1,0],fingers: [0,0,3,2,1,0],   barre: null,                      baseFret: 1 },
+    "Gmaj7":  { frets: [3,2,0,0,0,2],  fingers: [2,1,0,0,0,3],   barre: null,                      baseFret: 1 },
+    "Amaj7":  { frets: [-1,0,2,1,2,0], fingers: [0,0,2,1,3,0],   barre: null,                      baseFret: 1 },
+    "Bmaj7":  { frets: [-1,2,4,3,4,2], fingers: [0,1,3,2,4,1],   barre: {fret:2,from:1,to:5},      baseFret: 2 },
+    "C#maj7": { frets: [-1,4,3,1,1,1], fingers: [0,4,3,1,1,1],   barre: {fret:1,from:2,to:5},      baseFret: 1 },
+    "F#maj7": { frets: [2,4,3,3,2,2],  fingers: [1,4,3,2,1,1],   barre: {fret:2,from:0,to:5},      baseFret: 2 },
+    "Bbmaj7": { frets: [-1,1,3,2,3,1], fingers: [0,1,3,2,4,1],   barre: {fret:1,from:1,to:5},      baseFret: 1 },
+    "Ebmaj7": { frets: [-1,-1,1,3,3,2],fingers: [0,0,1,3,4,2],   barre: null,                      baseFret: 1 },
+    "Abmaj7": { frets: [4,3,1,1,1,0],  fingers: [4,3,1,1,1,0],   barre: {fret:1,from:2,to:4},      baseFret: 1 },
+
+    // ── NONA (9) ──────────────────────────────────────────────────────────
+    "C9":   { frets: [-1,3,2,3,3,3],   fingers: [0,2,1,3,3,3],   barre: {fret:3,from:2,to:5},      baseFret: 1 },
+    "D9":   { frets: [-1,-1,0,2,1,0],  fingers: [0,0,0,2,1,0],   barre: null,                      baseFret: 1 },
+    "E9":   { frets: [0,2,0,1,0,2],    fingers: [0,2,0,1,0,3],   barre: null,                      baseFret: 1 },
+    "G9":   { frets: [3,2,0,2,0,1],    fingers: [3,2,0,4,0,1],   barre: null,                      baseFret: 1 },
+    "A9":   { frets: [-1,0,2,4,2,3],   fingers: [0,0,1,3,1,2],   barre: {fret:2,from:2,to:4},      baseFret: 1 },
+    "B9":   { frets: [-1,2,1,2,2,2],   fingers: [0,2,1,3,3,3],   barre: {fret:2,from:2,to:5},      baseFret: 2 },
+    "F9":   { frets: [1,1,2,1,1,3],    fingers: [1,1,2,1,1,4],   barre: {fret:1,from:0,to:5},      baseFret: 1 },
+    "F#9":  { frets: [2,2,4,2,2,4],    fingers: [1,1,3,1,1,4],   barre: {fret:2,from:0,to:5},      baseFret: 2 },
+    "Bb9":  { frets: [-1,1,3,1,3,3],   fingers: [0,1,3,1,4,4],   barre: {fret:1,from:1,to:5},      baseFret: 1 },
+    "Eb9":  { frets: [-1,-1,1,1,2,1],  fingers: [0,0,1,1,2,1],   barre: {fret:1,from:2,to:5},      baseFret: 1 },
+
+    // ── MENORES COM 9 (m9) ────────────────────────────────────────────────
+    "Am9":  { frets: [-1,0,2,0,1,3],   fingers: [0,0,2,0,1,4],   barre: null,                      baseFret: 1 },
+    "Em9":  { frets: [0,2,0,0,3,0],    fingers: [0,1,0,0,2,0],   barre: null,                      baseFret: 1 },
+    "Dm9":  { frets: [-1,-1,0,2,1,3],  fingers: [0,0,0,2,1,4],   barre: null,                      baseFret: 1 },
+    "Bm9":  { frets: [-1,2,4,2,3,4],   fingers: [0,1,3,1,2,4],   barre: {fret:2,from:1,to:5},      baseFret: 2 },
+
+    // ── SUSPENSOS ─────────────────────────────────────────────────────────
+    "Csus2":  { frets: [-1,3,0,0,1,3], fingers: [0,2,0,0,1,4],   barre: null,                      baseFret: 1 },
+    "Dsus2":  { frets: [-1,-1,0,2,3,0],fingers: [0,0,0,1,2,0],   barre: null,                      baseFret: 1 },
+    "Asus2":  { frets: [-1,0,2,2,0,0], fingers: [0,0,1,2,0,0],   barre: null,                      baseFret: 1 },
+    "Esus2":  { frets: [0,2,4,4,0,0],  fingers: [0,1,2,3,0,0],   barre: null,                      baseFret: 1 },
+    "Gsus2":  { frets: [3,0,0,0,3,3],  fingers: [1,0,0,0,2,3],   barre: null,                      baseFret: 1 },
+    "Dsus4":  { frets: [-1,-1,0,2,3,3],fingers: [0,0,0,1,2,3],   barre: null,                      baseFret: 1 },
+    "Esus4":  { frets: [0,2,2,2,0,0],  fingers: [0,1,2,3,0,0],   barre: null,                      baseFret: 1 },
+    "Asus4":  { frets: [-1,0,2,2,3,0], fingers: [0,0,1,2,3,0],   barre: null,                      baseFret: 1 },
+    "Gsus4":  { frets: [3,3,0,0,3,3],  fingers: [1,2,0,0,3,4],   barre: null,                      baseFret: 1 },
+    "Bsus4":  { frets: [-1,2,4,4,5,2], fingers: [0,1,2,3,4,1],   barre: {fret:2,from:1,to:5},      baseFret: 2 },
+    "Csus4":  { frets: [-1,3,3,0,1,1], fingers: [0,3,4,0,1,2],   barre: null,                      baseFret: 1 },
+    "F#sus4": { frets: [2,2,4,4,2,2],  fingers: [1,1,3,4,1,1],   barre: {fret:2,from:0,to:5},      baseFret: 2 },
+
+    // ── ADD9 ──────────────────────────────────────────────────────────────
+    "Cadd9":  { frets: [-1,3,2,0,3,0], fingers: [0,2,1,0,3,0],   barre: null,                      baseFret: 1 },
+    "Gadd9":  { frets: [3,2,0,2,0,3],  fingers: [2,1,0,3,0,4],   barre: null,                      baseFret: 1 },
+    "Dadd9":  { frets: [-1,-1,0,2,3,0],fingers: [0,0,0,1,2,0],   barre: null,                      baseFret: 1 },
+    "Eadd9":  { frets: [0,2,2,1,0,2],  fingers: [0,2,3,1,0,4],   barre: null,                      baseFret: 1 },
+    "Aadd9":  { frets: [-1,0,2,4,2,0], fingers: [0,0,1,3,2,0],   barre: null,                      baseFret: 1 },
+
+    // ── DIMINUTOS E AUMENTADOS ────────────────────────────────────────────
+    "Cdim":   { frets: [-1,3,4,5,4,-1],fingers: [0,1,2,4,3,0],   barre: null,                      baseFret: 3 },
+    "Ddim":   { frets: [-1,-1,0,1,0,1],fingers: [0,0,0,1,0,2],   barre: null,                      baseFret: 1 },
+    "Edim":   { frets: [0,1,2,3,2,-1], fingers: [0,1,2,4,3,0],   barre: null,                      baseFret: 1 },
+    "Fdim":   { frets: [-1,-1,3,4,3,4],fingers: [0,0,1,3,2,4],   barre: null,                      baseFret: 1 },
+    "Gdim":   { frets: [-1,-1,5,6,5,6],fingers: [0,0,1,3,2,4],   barre: null,                      baseFret: 5 },
+    "Bdim":   { frets: [-1,2,3,4,3,-1],fingers: [0,1,2,4,3,0],   barre: null,                      baseFret: 2 },
+    "Caug":   { frets: [-1,3,2,1,1,0], fingers: [0,4,3,1,2,0],   barre: null,                      baseFret: 1 },
+    "Daug":   { frets: [-1,-1,0,3,3,2],fingers: [0,0,0,2,3,1],   barre: null,                      baseFret: 1 },
+    "Eaug":   { frets: [0,3,2,1,1,0],  fingers: [0,4,3,2,1,0],   barre: null,                      baseFret: 1 },
+    "Gaug":   { frets: [3,2,1,0,0,-1], fingers: [3,2,1,0,0,0],   barre: null,                      baseFret: 1 },
+    "Aaug":   { frets: [-1,0,3,2,2,1], fingers: [0,0,4,2,3,1],   barre: null,                      baseFret: 1 },
+    "Baug":   { frets: [-1,2,1,0,0,-1],fingers: [0,3,2,1,0,0],   barre: null,                      baseFret: 1 },
+    "F#aug":  { frets: [2,1,0,-1,-1,-1],fingers:[2,1,0,0,0,0],   barre: null,                      baseFret: 1 },
+
+    // ── SEXTA (6) ─────────────────────────────────────────────────────────
+    "C6":   { frets: [-1,3,2,2,1,0],   fingers: [0,4,2,3,1,0],   barre: null,                      baseFret: 1 },
+    "D6":   { frets: [-1,-1,0,2,0,2],  fingers: [0,0,0,1,0,2],   barre: null,                      baseFret: 1 },
+    "E6":   { frets: [0,2,2,1,2,0],    fingers: [0,2,3,1,4,0],   barre: null,                      baseFret: 1 },
+    "G6":   { frets: [3,2,0,0,0,0],    fingers: [2,1,0,0,0,0],   barre: null,                      baseFret: 1 },
+    "A6":   { frets: [-1,0,2,2,2,2],   fingers: [0,0,1,2,3,4],   barre: null,                      baseFret: 1 },
+    "Am6":  { frets: [-1,0,2,2,1,2],   fingers: [0,0,2,3,1,4],   barre: null,                      baseFret: 1 },
+    "Em6":  { frets: [0,2,2,0,2,0],    fingers: [0,2,3,0,4,0],   barre: null,                      baseFret: 1 },
 };
 
 // Normaliza nome do acorde para bater com o banco (ex: "F#m7" → tenta "F#m", "F#")
-function normalizarAcordeParaBusca(nome) {
-    const tentativas = [nome];
-    // variações comuns de sufixo
-    const base = nome.replace(/maj/i, 'maj').replace(/min/i, 'm');
-    tentativas.push(base);
-    // se termina em número, tenta sem o número
-    tentativas.push(nome.replace(/\d+$/, ''));
-    // tenta só a base (nota + m se menor)
+function normalizarAcordeParaBusca(nomeOriginal) {
+    // Separar nota de baixo (ex: C/E → base="C", baixo="E")
+    const partesSlash = nomeOriginal.split('/');
+    const nome = partesSlash[0].trim();
+    const notaBaixo = partesSlash[1] ? partesSlash[1].trim() : null;
+
+    const tentativas = [];
+
+    // 1. Nome exato (sem o baixo)
+    tentativas.push(nome);
+
+    // 2. Normalizar bemóis para equivalentes sustenidos
+    const normBemol = { 'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#' };
+    const notaBase = nome.match(/^([A-G][#b]?)/)?.[1] || '';
+    const sufixo   = nome.slice(notaBase.length);
+    const notaNorm = normBemol[notaBase] || notaBase;
+    if (notaNorm !== notaBase) tentativas.push(notaNorm + sufixo);
+
+    // 3. Variações de sufixo comuns
+    tentativas.push(nome.replace(/maj7/i, 'maj7'));
+    tentativas.push(nome.replace(/min/i, 'm'));
+    tentativas.push(nome.replace(/M$/, 'maj7'));
+
+    // 4. Sem número final (B7 → B, Am9 → Am)
+    const semNumero = nome.replace(/\d+$/, '');
+    tentativas.push(semNumero);
+    if (notaNorm !== notaBase) tentativas.push(notaNorm + semNumero.slice(notaBase.length));
+
+    // 5. Só base + qualidade menor (Am7 → Am, Bm9 → Bm)
     const matchBase = nome.match(/^([A-G][#b]?)(m)?/);
-    if (matchBase) tentativas.push(matchBase[1] + (matchBase[2] || ''));
-    // deduplicar mantendo ordem
-    return [...new Set(tentativas)];
+    if (matchBase) {
+        const baseComQual = matchBase[1] + (matchBase[2] || '');
+        tentativas.push(baseComQual);
+        if (notaNorm !== matchBase[1]) tentativas.push(notaNorm + (matchBase[2] || ''));
+    }
+
+    return { tentativas: [...new Set(tentativas)], notaBaixo };
 }
 
-function gerarSvgAcorde(nome) {
-    const tentativas = normalizarAcordeParaBusca(nome);
+function gerarSvgAcorde(nomeOriginal) {
+    const { tentativas, notaBaixo } = normalizarAcordeParaBusca(nomeOriginal);
     let acorde = null;
+    let nomeUsado = null;
     for (const t of tentativas) {
-        if (BANCO_ACORDES[t]) { acorde = BANCO_ACORDES[t]; break; }
+        if (BANCO_ACORDES[t]) { acorde = BANCO_ACORDES[t]; nomeUsado = t; break; }
     }
     if (!acorde) return null;
+    const ehAproximado = nomeUsado !== tentativas[0] || notaBaixo;
 
     const { frets, fingers, barre, baseFret } = acorde;
 
@@ -1250,7 +1371,20 @@ function gerarSvgAcorde(nome) {
     svg += `<rect width="${W}" height="${H}" rx="10" fill="var(--card-bg)" stroke="var(--border-color)" stroke-width="1.5"/>`;
 
     // nome do acorde
-    svg += `<text x="${W/2}" y="20" text-anchor="middle" font-family="'Segoe UI',sans-serif" font-size="15" font-weight="800" fill="var(--chord-color)">${escapeHtml(nome)}</text>`;
+    svg += `<text x="${W/2}" y="20" text-anchor="middle" font-family="'Segoe UI',sans-serif" font-size="15" font-weight="800" fill="var(--chord-color)">${escapeHtml(nomeOriginal)}</text>`;
+
+    // Aviso de aproximação ou nota de baixo
+    if (ehAproximado) {
+        let avisoTexto = '';
+        if (notaBaixo && nomeUsado !== tentativas[0]) {
+            avisoTexto = `aprox. (${nomeUsado}) baixo: ${notaBaixo}`;
+        } else if (notaBaixo) {
+            avisoTexto = `baixo: ${notaBaixo}`;
+        } else {
+            avisoTexto = `aprox.: ${nomeUsado}`;
+        }
+        svg += `<text x="${W/2}" y="${H - 6}" text-anchor="middle" font-family="'Segoe UI',sans-serif" font-size="8" fill="var(--text-muted)" font-style="italic">${escapeHtml(avisoTexto)}</text>`;
+    }
 
     // indicador de casa base (se > 1)
     if (baseFret > 1) {
