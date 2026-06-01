@@ -12,7 +12,7 @@
 </head>
 
 <body>
-
+    <div id="barra-progresso-musica" class="barra-progresso-musica"></div>
     <header class="app-header">
         <div class="header-content">
             <div class="brand-wrapper">
@@ -327,6 +327,21 @@
     </div>
 
     <script src="app.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('Service Worker registrado com sucesso!', registration.scope);
+                    })
+                    .catch(err => {
+                        console.log('Erro ao registrar Service Worker:', err);
+                    });
+            });
+        }
+    </script>
+
 </body>
 
 </html>

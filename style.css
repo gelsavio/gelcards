@@ -954,3 +954,28 @@ kbd {
 [data-theme="bege"] .placar-rolagem {
     background: rgba(80, 55, 30, 0.78);
 }
+
+
+/* ── BARRA DE PROGRESSO DE ROLAGEM ──────────────────────────────── */
+
+.barra-progresso-musica {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 5px;
+    background-color: var(--success-color);
+    z-index: 1005;
+    /* Garante exibição acima de qualquer outro elemento */
+    transition: width 0.1s linear, background-color 0.3s ease;
+    display: none;
+    /* Invisível por padrão, ativa apenas na rolagem */
+}
+
+
+/* Estado de alerta para os últimos 10% da cifra */
+
+.barra-progresso-musica.alerta {
+    background-color: #ef4444 !important;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+}
