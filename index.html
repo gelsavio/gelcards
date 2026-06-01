@@ -49,14 +49,21 @@
 
     <!-- Mini modal do menu sanduíche -->
     <div id="menu-flutuante" class="menu-flutuante" style="display:none;">
-        <div class="menu-flutuante-item" onclick="abrirModalAdmin(); fecharMenuFlutuante();">
-            <span class="menu-flutuante-icone">⚙️</span>
-            <span>Gerenciador</span>
+        <div class="menu-flutuante-item" onclick="abrirModalCadastrarMusica(); fecharMenuFlutuante();">
+            <span class="menu-flutuante-icone">🎤</span>
+            <span>Inserir Nova Música</span>
         </div>
-        <div class="menu-flutuante-item" onclick="toggleBusca(); fecharMenuFlutuante();">
+
+        <!--   <div class="menu-flutuante-item" onclick="toggleBusca(); fecharMenuFlutuante();">
             <span class="menu-flutuante-icone">🔍</span>
             <span>Buscar Música</span>
         </div>
+ -->
+        <div class="menu-flutuante-item" onclick="abrirModalAdmin(); fecharMenuFlutuante();">
+            <span class="menu-flutuante-icone">⚙️</span>
+            <span>Gerenciar Listas</span>
+        </div>
+
         <div class="menu-flutuante-item" onclick="imprimirListaAtiva(); fecharMenuFlutuante();">
             <span class="menu-flutuante-icone">🖨️</span>
             <span>Imprimir Lista</span>
@@ -69,10 +76,7 @@
             <span class="menu-flutuante-icone">⌨️</span>
             <span>Atalhos de Teclado</span>
         </div>
-        <div class="menu-flutuante-item" onclick="abrirModalCadastrarMusica(); fecharMenuFlutuante();">
-            <span class="menu-flutuante-icone">🎤</span>
-            <span>Cadastrar Música</span>
-        </div>
+
         <div class="menu-flutuante-item" onclick="abrirModalTutorial(); fecharMenuFlutuante();">
             <span class="menu-flutuante-icone">❓</span>
             <span>Ajuda</span>
@@ -104,14 +108,15 @@
             </div>
 
             <div class="admin-section">
-                <h4>🗂️ Gerenciar Listas</h4>
+                <h4>🗂️ Gerir Listas</h4>
                 <div style="margin-bottom:6px;display:flex;align-items:center;gap:8px;">
                     <label style="font-size:12px;font-weight:bold;">Lista:</label>
                     <select id="seletor-lista-gerenciar" style="flex:1;max-width:100%;background:var(--card-bg);color:var(--text-color);border-color:var(--border-color);"></select>
                 </div>
-                <div style="display:flex;gap:6px;">
-                    <button class="btn-pequeno" style="flex:1;background:#10b981;" onclick="duplicarLista()">📋 Duplicar</button>
-                    <button class="btn-pequeno" style="flex:1;background:#ef4444;" onclick="excluirLista()">🗑️ Excluir</button>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <button class="btn-pequeno" style="flex:1;background:#10b981;min-width:80px;" onclick="duplicarLista()">📋 Duplicar</button>
+                    <button class="btn-pequeno" style="flex:1;background:#3b82f6;min-width:80px;" onclick="abrirModalRenomearLista()">✏️ Renomear</button>
+                    <button class="btn-pequeno" style="flex:1;background:#ef4444;min-width:80px;" onclick="excluirLista()">🗑️ Excluir</button>
                 </div>
             </div>
 
@@ -189,6 +194,20 @@
                     <h5>➕ Adicionar / Mesclar Músicas</h5>
                     <p>Mantém seu acervo atual intacto e apenas injeta as músicas novas e setlists que vieram do backup.</p>
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-prompt-lista" onclick="if(event.target.id === 'modal-prompt-lista') fecharModalPromptLista()">
+        <div class="modal-wrapper" style="max-width: 400px; padding: 18px;">
+            <div class="modal-header" style="margin-bottom: 12px; padding-bottom: 8px;">
+                <h3 id="modal-prompt-titulo">Nome da Lista</h3>
+                <button class="btn-fechar-modal" onclick="fecharModalPromptLista()">&times;</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="hidden" id="modal-prompt-acao">
+                <input type="text" id="modal-prompt-input" class="input-text" style="margin: 0;" placeholder="Introduza o nome da lista...">
+                <button class="btn-sucesso" id="modal-prompt-btn-confirmar" onclick="confirmarAcaoPromptLista()">Confirmar</button>
             </div>
         </div>
     </div>
