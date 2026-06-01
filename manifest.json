@@ -1,0 +1,13 @@
+{
+    "short_name": "GelCifras",
+    "name": "GelCifras - Gerenciador de Cifras",
+    "icons": [{
+        "src": "apple-touch-icon.png",
+        "type": "image/png",
+        "sizes": "512x512"
+    }],
+    "start_url": "/index.html",
+    "background_color": "#0f172a",
+    "theme_color": "#1d4ed8",
+    "display": "standalone"
+}
