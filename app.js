@@ -107,7 +107,7 @@ function sincronizarEAAplicarInterface() {
                         </div>
                     </div>
                     <div class="panel-column">
-                        <span class="sub-txt-label">Capo <span id="capo-dica-${index}" class="capo-dica-inline"></span></span>
+                        <span class="sub-txt-label">Capo <span id="capo-dica-${index}" class="capo-dica-inline"></span> <button class="btn-reset-tom" onclick="resetarCapoOriginal(${index}, ${musica.capoOriginal || 0})" title="Restaurar Capo Original">🔄</button></span>
                         <div class="adjustment-row">
                             <button class="btn-num" onclick="mudarCapoIndividual(${index}, -1)">−</button>
                             <span id="capo-txt-${index}" class="num-display">0</span>
@@ -162,6 +162,11 @@ function sincronizarEAAplicarInterface() {
 
             // Restaurar capo salvo
             const capoSalvo = musica.capoCustomizado || 0;
+            // Garantir capoOriginal para músicas antigas sem esse campo
+            if (musica.capoOriginal === undefined) {
+                musica.capoOriginal = capoSalvo;
+                appStorage.musicasGlobais[musica.id] = musica;
+            }
             bloco.setAttribute('data-capo', capoSalvo);
             const inputCapo = document.getElementById(`capo-select-${index}`);
             const txtCapo = document.getElementById(`capo-txt-${index}`);
@@ -267,6 +272,10 @@ function salvarAlteracoesCifraEditada() {
     appStorage.musicasGlobais[id].artista = artista;
     appStorage.musicasGlobais[id].tomOriginal = tomOriginal;
     appStorage.musicasGlobais[id].letraCifra = letra;
+    // Preservar capoOriginal se já existir; redetectar do texto se quiser
+    if (appStorage.musicasGlobais[id].capoOriginal === undefined) {
+        appStorage.musicasGlobais[id].capoOriginal = appStorage.musicasGlobais[id].capoCustomizado || 0;
+    }
 
     localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
     fecharModalEditar();
@@ -369,10 +378,19 @@ function processarESalvarNovaMusica() {
         alert("Cole a cifra!");
         return;
     }
-    const linhas = input.split('\n');
+    // Limpar links markdown [texto](url), tags HTML e lixo de copiar/colar
+    const inputLimpo = input
+        .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1') // [texto](url) → texto
+        .replace(/<[^>]+>/g, '') // tags HTML
+        .replace(/Favoritar Cifra/gi, '')
+        .replace(/Imprimir/gi, '')
+        .trim();
+
+    const linhas = inputLimpo.split('\n');
     let tit = "Título Desconhecido",
         art = "Artista Desconhecido",
         tom = "C",
+        capo = 0,
         filtradas = [];
     const lixo = ["favoritar", "afinação:", "imprimir"];
     let linesIdentifiedCount = 0;
@@ -394,7 +412,17 @@ function processarESalvarNovaMusica() {
             continue;
         }
         if (l.toLowerCase().startsWith("tom:")) {
-            tom = l.replace(/tom:/i, '').trim();
+            // Pega só o tom, desprezando tudo após espaço, parêntese ou colchete
+            // Ex: "Tom: Gm (forma dos acordes no tom de Em)" → "Gm"
+            const tomRaw = l.replace(/tom:/i, '').trim();
+            const tomMatch = tomRaw.match(/^([A-G][#b]?m?)/);
+            tom = tomMatch ? tomMatch[1] : tomRaw.split(/[\s\(]/)[0];
+            continue;
+        }
+        if (l.toLowerCase().includes("capo")) {
+            // Reconhece: "Capo: 4", "Capo 4", "Capotraste na 4ª casa", "Capo na 4a casa"
+            const capoMatch = l.match(/\d+/);
+            if (capoMatch) capo = parseInt(capoMatch[0]);
             continue;
         }
         if (lixo.some(p => l.toLowerCase().includes(p))) continue;
@@ -409,6 +437,8 @@ function processarESalvarNovaMusica() {
         artista: art,
         tomOriginal: tom,
         tomCustomizado: tom,
+        capoOriginal: capo,
+        capoCustomizado: capo,
         fonteCustomizada: 16,
         velocidadeCustomizada: 10,
         letraCifra: filtradas.join('\n').trim()
@@ -647,14 +677,34 @@ function mudarVelocidadeIndividual(indexMusica, delta) {
 function mudarTomIndividual(indexMusica, semitons) {
     const bloco = document.getElementById(`musica-bloco-${indexMusica}`);
     const idReal = bloco.getAttribute('data-real-id');
-    let idx = parseInt(bloco.getAttribute('data-tom-index'));
+
+    // 1. Ignoramos o índice quebrado e pegamos o texto real da tela
+    const tomAtualTexto = (document.getElementById(`tom-txt-${indexMusica}`) || {}).innerText || "";
+
+    // 2. Separamos a nota (ex: G) do sufixo (ex: m) com a mesma proteção que você usa nos acordes
+    const matchTom = tomAtualTexto.match(/^([A-G][#b]?)(.*)/);
+    if (!matchTom) return;
+
+    let notaBase = matchTom[1];
+    const sufixo = matchTom[2];
+
+    // Normalização de bemóis (Db vira C# etc)
+    const norm = { Db: "C#", Eb: "D#", Gb: "F#", Ab: "G#", Bb: "A#" };
+    notaBase = norm[notaBase] || notaBase;
+
+    // 3. Calculamos a posição da nota limpa
+    let idx = escalaCromatica.indexOf(notaBase);
     if (idx === -1) return;
 
+    // Fazemos a matemática dos semitons
     idx = (idx + semitons + 12) % 12;
-    bloco.setAttribute('data-tom-index', idx);
+    bloco.setAttribute('data-tom-index', idx); // Conserta o index no HTML para o Capo não se perder
 
-    const novoTomTexto = escalaCromatica[idx];
+    // 4. Remontamos o tom colando o sufixo de volta
+    const novoTomTexto = escalaCromatica[idx] + sufixo;
     document.getElementById(`tom-txt-${indexMusica}`).innerText = novoTomTexto;
+
+    // Transpõe o corpo da música
     bloco.querySelectorAll('.chord').forEach(span => {
         span.textContent = transporAcorde(span.textContent, semitons);
     });
@@ -664,13 +714,10 @@ function mudarTomIndividual(indexMusica, semitons) {
         localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
     }
 
-    // Atualizar dica de capo se houver capo ativo
+    // Atualiza a dica do capo
     const sel = document.getElementById(`capo-select-${indexMusica}`);
     const capoAtivo = sel ? parseInt(sel.value) : 0;
     if (capoAtivo > 0) {
-        // Acordes já foram transpostos pelo delta do tom.
-        // O capo não muda — os acordes exibidos já estão corretos
-        // (sempre "capoAtivo" semitons abaixo do tom real, e o delta foi aplicado igualmente).
         exibirDicaCapo(indexMusica, idx, capoAtivo);
     }
 }
@@ -679,13 +726,33 @@ function resetarTomOriginalFabrica(indexMusica, tomOriginalFabrica) {
     const bloco = document.getElementById(`musica-bloco-${indexMusica}`);
     const idReal = bloco.getAttribute('data-real-id');
     const idxAtual = parseInt(bloco.getAttribute('data-tom-index'));
-    const idxOriginal = escalaCromatica.indexOf(tomOriginalFabrica);
 
-    if (idxAtual === -1 || idxOriginal === -1 || idxAtual === idxOriginal) return;
+    // 1. Isola a nota base do tom original de fábrica (ex: tira o "m" do "Gm")
+    const matchOrig = tomOriginalFabrica.match(/^([A-G][#b]?)/);
+    if (!matchOrig) return;
+
+    let notaOrigBase = matchOrig[1];
+
+    // Normalização para bemóis, caso o tom de fábrica venha como Bb, Eb, etc.
+    const norm = { Db: "C#", Eb: "D#", Gb: "F#", Ab: "G#", Bb: "A#" };
+    notaOrigBase = norm[notaOrigBase] || notaOrigBase;
+
+    // 2. Acha a posição real da nota pura na escala
+    const idxOriginal = escalaCromatica.indexOf(notaOrigBase);
+
+    if (idxAtual === -1 || idxOriginal === -1) return;
+
+    // Evita rodar a função se já estiver no tom original exato
+    const tomAtualTexto = (document.getElementById(`tom-txt-${indexMusica}`) || {}).innerText || "";
+    if (idxAtual === idxOriginal && tomAtualTexto === tomOriginalFabrica) return;
+
+    // 3. Calcula a diferença de semitons para transpor o corpo da música
     const semitonsDiferenca = idxOriginal - idxAtual;
 
+    // 4. Aplica os valores na tela
     bloco.setAttribute('data-tom-index', idxOriginal);
     document.getElementById(`tom-txt-${indexMusica}`).innerText = tomOriginalFabrica;
+
     bloco.querySelectorAll('.chord').forEach(span => {
         span.textContent = transporAcorde(span.textContent, semitonsDiferenca);
     });
@@ -694,7 +761,44 @@ function resetarTomOriginalFabrica(indexMusica, tomOriginalFabrica) {
         appStorage.musicasGlobais[idReal].tomCustomizado = tomOriginalFabrica;
         localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
     }
+
+    // 5. Atualiza a dica do capo para não ficar dessincronizada após o reset
+    const sel = document.getElementById(`capo-select-${indexMusica}`);
+    const capoAtivo = sel ? parseInt(sel.value) : 0;
+    if (capoAtivo > 0 && typeof exibirDicaCapo !== 'undefined') {
+        exibirDicaCapo(indexMusica, idxOriginal, capoAtivo);
+    }
+
     mostrarToast(`Tom original (${tomOriginalFabrica}) restaurado!`);
+}
+
+function resetarCapoOriginal(indexMusica, capoOriginal) {
+    const bloco = document.getElementById(`musica-bloco-${indexMusica}`);
+    const idReal = bloco.getAttribute('data-real-id');
+    const input = document.getElementById(`capo-select-${indexMusica}`);
+    const txt = document.getElementById(`capo-txt-${indexMusica}`);
+    const idxTomAtual = parseInt(bloco.getAttribute('data-tom-index'));
+    const capoAtual = parseInt(input.value);
+
+    if (capoAtual === capoOriginal) return;
+
+    // Reverter capo atual e aplicar o original
+    const delta = capoAtual - capoOriginal;
+    bloco.querySelectorAll('.chord').forEach(span => {
+        span.textContent = transporAcorde(span.textContent, delta);
+    });
+
+    input.value = capoOriginal;
+    txt.innerText = capoOriginal;
+    bloco.setAttribute('data-capo', capoOriginal);
+
+    exibirDicaCapo(indexMusica, idxTomAtual, capoOriginal);
+
+    if (appStorage.musicasGlobais[idReal]) {
+        appStorage.musicasGlobais[idReal].capoCustomizado = capoOriginal;
+        localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
+    }
+    mostrarToast(`Capo original (${capoOriginal === 0 ? 'sem capo' : capoOriginal + 'ª casa'}) restaurado!`);
 }
 
 // ── CAPOTRASTE ────────────────────────────────────────────────────────────
@@ -714,7 +818,7 @@ function calcularSugestaoCapo(idxTomAtual, casaCapo) {
     return { tomAcordes, ehAmigavel };
 }
 
-function exibirDicaCapo(indexMusica, idxTomAtual, casaCapo) {
+function exibirDicaCapo(indexMusica, idxTomAtualBase, casaCapo) {
     const dica = document.getElementById(`capo-dica-${indexMusica}`);
     if (!dica) return;
 
@@ -723,12 +827,19 @@ function exibirDicaCapo(indexMusica, idxTomAtual, casaCapo) {
         return;
     }
 
-    const { tomAcordes, ehAmigavel } = calcularSugestaoCapo(idxTomAtual, casaCapo);
-    const tomSoando = escalaCromatica[idxTomAtual];
+    // Resgata o sufixo da tela para a dica não perder o "m" ou "7"
+    const tomAtualTexto = (document.getElementById(`tom-txt-${indexMusica}`) || {}).innerText || "";
+    const matchTom = tomAtualTexto.match(/^([A-G][#b]?)(.*)/) || [, "", ""];
+    const sufixo = matchTom[2];
 
-    dica.textContent = `(${tomAcordes}→${tomSoando})`;
+    const { tomAcordes, ehAmigavel } = calcularSugestaoCapo(idxTomAtualBase, casaCapo);
+    const tomSoandoBase = escalaCromatica[idxTomAtualBase];
+
+    // Monta a dica colando o sufixo nos dois lados da flecha
+    dica.textContent = `(${tomAcordes}${sufixo}→${tomSoandoBase}${sufixo})`;
     dica.className = "capo-dica-inline " + (ehAmigavel ? "capo-dica-ok" : "capo-dica-aviso");
 }
+
 
 function mudarCapoIndividual(indexMusica, delta) {
     const bloco = document.getElementById(`musica-bloco-${indexMusica}`);
