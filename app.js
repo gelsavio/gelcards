@@ -888,6 +888,31 @@ function transporAcorde(acorde, semitons) {
     return escalaCromatica[(idx + semitons + 12) % 12] + resto;
 }
 
+function ajustarVelocidadeAtiva(delta) {
+    if (!intervaloRolagem) return;
+    const indexAtual = obterIndiceMusicaAtualNaTela();
+    const input = document.getElementById(`vel-musica-${indexAtual}`);
+    const txt   = document.getElementById(`vel-txt-${indexAtual}`);
+    if (!input) return;
+
+    const novaVel = Math.min(20, Math.max(1, parseInt(input.value) + delta));
+    input.value = novaVel;
+    if (txt) txt.innerText = novaVel;
+
+    // Salvar no storage
+    const bloco  = document.getElementById(`musica-bloco-${indexAtual}`);
+    const idReal = bloco ? bloco.getAttribute('data-real-id') : null;
+    if (idReal && appStorage.musicasGlobais[idReal]) {
+        appStorage.musicasGlobais[idReal].velocidadeCustomizada = novaVel;
+        localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
+    }
+
+    // Reaplicar motor com nova velocidade
+    velocidadGlobalAtual = novaVel;
+    redefinirMotorRolagem(novaVel);
+    mostrarToast(`Velocidade: ${novaVel}`);
+}
+
 function verificarMusicaVisivelNaTela() {
     const focado = obterIndiceMusicaAtualNaTela();
     const input = document.getElementById(`vel-musica-${focado}`);
@@ -912,6 +937,7 @@ function toggleRolagemGeral() {
         btn.classList.remove("active");
         paineisPalco.forEach(p => p.classList.remove('ocultar-dinamico'));
         toggleTelaCheia(false);
+        document.body.classList.remove('rolagem-ativa');
         const placarOff = document.getElementById('placar-rolagem');
         if (placarOff) placarOff.style.display = 'none';
 
@@ -928,6 +954,7 @@ function toggleRolagemGeral() {
         paineisPalco.forEach(p => p.classList.add('ocultar-dinamico'));
         verificarMusicaVisivelNaTela();
         toggleTelaCheia(true);
+        document.body.classList.add('rolagem-ativa');
         const placar = document.getElementById('placar-rolagem');
         if (placar) placar.style.display = 'block';
 
@@ -2072,3 +2099,41 @@ abrirModalAdmin = function() {
     _abrirModalAdminOriginal();
     popularSeletorGerenciarListas();
 };
+// ── INTEGRAÇÃO COM ARQUIVOS DO SISTEMA (PWA FILE HANDLER) ─────────────────────
+
+if ('launchQueue' in window) {
+    window.launchQueue.setConsumer(async (launchParams) => {
+        // Se não houver arquivos na fila, ignora
+        if (!launchParams.files || launchParams.files.length === 0) return;
+
+        try {
+            // Pega o arquivo e extrai o texto
+            const fileHandle = launchParams.files[0];
+            const file = await fileHandle.getFile();
+            const conteudoTexto = await file.text();
+
+            // Encontra o seu campo de cifra bruta
+            const campoImportacao = document.getElementById('input-cifra-bruta');
+            
+            if (campoImportacao) {
+                // Joga o texto do .txt para dentro da caixa
+                campoImportacao.value = conteudoTexto;
+                
+                // Abre o Modal de Cadastrar Música usando a função correta
+                if (typeof abrirModalCadastrarMusica === 'function') {
+                    abrirModalCadastrarMusica();
+                } 
+                
+                if (typeof mostrarToast !== 'undefined') {
+                    mostrarToast(`Arquivo "${file.name}" importado. Verifique e salve!`);
+                }
+            } else {
+                alert(`Arquivo "${file.name}" recebido, mas o campo de texto não foi encontrado na tela.`);
+            }
+
+        } catch (erro) {
+            console.error('Erro ao ler o arquivo:', erro);
+            alert('Não foi possível extrair o texto do arquivo recebido.');
+        }
+    });
+}
