@@ -1,6 +1,5 @@
 const CACHE_NAME = 'gelcifras-cache-v1';
 
-// Lista de arquivos que serão salvos na memória do celular
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
@@ -11,24 +10,44 @@ const ASSETS_TO_CACHE = [
     '/favicon.ico'
 ];
 
-// Instalação: Baixa os arquivos e guarda no cache
 self.addEventListener('install', event => {
+    self.skipWaiting(); // Força a atualização do Service Worker
     event.waitUntil(
-        caches.open(CACHE_NAME)
-        .then(cache => {
-            console.log('Cache aberto e arquivos salvos');
-            return cache.addAll(ASSETS_TO_CACHE);
-        })
+        caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS_TO_CACHE))
     );
 });
 
-// Interceptação: Quando o app pedir um arquivo, busca primeiro no cache
+self.addEventListener('activate', event => {
+    event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener('fetch', event => {
+    const url = new URL(event.request.url);
+
+    // INTERCEPTA O COMPARTILHAMENTO DE ARQUIVO DO ANDROID
+    if (event.request.method === 'POST' && url.pathname === '/_share-target') {
+        event.respondWith((async() => {
+            try {
+                const formData = await event.request.formData();
+                const file = formData.get('file');
+
+                if (file) {
+                    const text = await file.text();
+                    const cache = await caches.open(CACHE_NAME);
+                    // Guarda o texto extraído no cache
+                    await cache.put('/shared-file.txt', new Response(text));
+                }
+            } catch (err) {
+                console.error('Erro ao interceptar arquivo:', err);
+            }
+            // Redireciona para o app avisando que há um arquivo na URL (?shared=1)
+            return Response.redirect('/?shared=1', 303);
+        })());
+        return;
+    }
+
+    // Fluxo normal de cache (offline)
     event.respondWith(
-        caches.match(event.request)
-        .then(response => {
-            // Se o arquivo está no cache, entrega ele. Se não, tenta buscar na rede.
-            return response || fetch(event.request);
-        })
+        caches.match(event.request).then(response => response || fetch(event.request))
     );
 });

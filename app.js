@@ -892,7 +892,7 @@ function ajustarVelocidadeAtiva(delta) {
     if (!intervaloRolagem) return;
     const indexAtual = obterIndiceMusicaAtualNaTela();
     const input = document.getElementById(`vel-musica-${indexAtual}`);
-    const txt   = document.getElementById(`vel-txt-${indexAtual}`);
+    const txt = document.getElementById(`vel-txt-${indexAtual}`);
     if (!input) return;
 
     const novaVel = Math.min(20, Math.max(1, parseInt(input.value) + delta));
@@ -900,7 +900,7 @@ function ajustarVelocidadeAtiva(delta) {
     if (txt) txt.innerText = novaVel;
 
     // Salvar no storage
-    const bloco  = document.getElementById(`musica-bloco-${indexAtual}`);
+    const bloco = document.getElementById(`musica-bloco-${indexAtual}`);
     const idReal = bloco ? bloco.getAttribute('data-real-id') : null;
     if (idReal && appStorage.musicasGlobais[idReal]) {
         appStorage.musicasGlobais[idReal].velocidadeCustomizada = novaVel;
@@ -2099,41 +2099,42 @@ abrirModalAdmin = function() {
     _abrirModalAdminOriginal();
     popularSeletorGerenciarListas();
 };
-// ── INTEGRAÇÃO COM ARQUIVOS DO SISTEMA (PWA FILE HANDLER) ─────────────────────
 
-if ('launchQueue' in window) {
-    window.launchQueue.setConsumer(async (launchParams) => {
-        // Se não houver arquivos na fila, ignora
-        if (!launchParams.files || launchParams.files.length === 0) return;
+// ── INTEGRAÇÃO COM COMPARTILHAMENTO DO ANDROID (SHARE TARGET API) ──────────
 
+window.addEventListener('load', async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Se a URL tiver ?shared=1, significa que o Android acabou de compartilhar um arquivo
+    if (urlParams.has('shared')) {
         try {
-            // Pega o arquivo e extrai o texto
-            const fileHandle = launchParams.files[0];
-            const file = await fileHandle.getFile();
-            const conteudoTexto = await file.text();
+            const cache = await caches.open('gelcifras-cache-v1');
+            const response = await cache.match('/shared-file.txt');
 
-            // Encontra o seu campo de cifra bruta
-            const campoImportacao = document.getElementById('input-cifra-bruta');
-            
-            if (campoImportacao) {
-                // Joga o texto do .txt para dentro da caixa
-                campoImportacao.value = conteudoTexto;
+            if (response) {
+                const conteudoTexto = await response.text();
                 
-                // Abre o Modal de Cadastrar Música usando a função correta
-                if (typeof abrirModalCadastrarMusica === 'function') {
-                    abrirModalCadastrarMusica();
-                } 
-                
-                if (typeof mostrarToast !== 'undefined') {
-                    mostrarToast(`Arquivo "${file.name}" importado. Verifique e salve!`);
+                const campoImportacao = document.getElementById('input-cifra-bruta');
+                if (campoImportacao) {
+                    campoImportacao.value = conteudoTexto;
+                    
+                    if (typeof abrirModalCadastrarMusica === 'function') {
+                        abrirModalCadastrarMusica();
+                    }
+                    if (typeof mostrarToast !== 'undefined') {
+                        mostrarToast("Cifra recebida! Processe para salvar.");
+                    }
                 }
-            } else {
-                alert(`Arquivo "${file.name}" recebido, mas o campo de texto não foi encontrado na tela.`);
+                
+                // Limpa o arquivo da memória
+                await cache.delete('/shared-file.txt');
             }
-
-        } catch (erro) {
-            console.error('Erro ao ler o arquivo:', erro);
-            alert('Não foi possível extrair o texto do arquivo recebido.');
+        } catch (err) {
+            console.error("Erro ao ler arquivo compartilhado:", err);
+            alert("Não foi possível carregar o arquivo.");
         }
-    });
-}
+        
+        // Limpa a barra de endereços para não repetir a importação se atualizar a página
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+});
