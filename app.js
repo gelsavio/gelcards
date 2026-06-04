@@ -2202,13 +2202,12 @@ document.addEventListener('click', (e) => {
             mostrarToast("⏸ Rolagem Pausada");
         }
     }
-});
-
-// =========================================================================
+});// =========================================================================
 // LEITURA AUTOMÁTICA DE VERSÃO (MANIFEST.JSON)
 // =========================================================================
 window.addEventListener('load', () => {
-    fetch('/manifest.json')
+    // O { cache: 'no-store' } é a chave mágica que ignora o Service Worker
+    fetch('manifest.json', { cache: 'no-store' })
         .then(response => response.json())
         .then(data => {
             if (data.version) {
