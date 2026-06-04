@@ -949,6 +949,7 @@ function toggleRolagemGeral() {
     const barra = document.getElementById('barra-progresso-musica');
 
     if (intervaloRolagem) {
+        // --- PAUSAR ROLAGEM ---
         clearInterval(intervaloRolagem);
         intervaloRolagem = null;
         btn.innerText = "▶";
@@ -956,6 +957,7 @@ function toggleRolagemGeral() {
         paineisPalco.forEach(p => p.classList.remove('ocultar-dinamico'));
         toggleTelaCheia(false);
         document.body.classList.remove('rolagem-ativa');
+
         const placarOff = document.getElementById('placar-rolagem');
         if (placarOff) placarOff.style.display = 'none';
 
@@ -966,20 +968,42 @@ function toggleRolagemGeral() {
             barra.classList.remove('alerta');
         }
     } else {
+        // --- INICIAR ROLAGEM ---
         btn.innerText = "■";
         btn.classList.add("active");
-        velocidadGlobalAtual = -1;
+
+        // 1. Salva a música que você estava lendo ANTES da tela "encolher"
+        const indexFocado = obterIndiceMusicaAtualNaTela();
+
+        // 2. Esconde os painéis visuais
         paineisPalco.forEach(p => p.classList.add('ocultar-dinamico'));
-        verificarMusicaVisivelNaTela();
         toggleTelaCheia(true);
         document.body.classList.add('rolagem-ativa');
+
         const placar = document.getElementById('placar-rolagem');
         if (placar) placar.style.display = 'block';
-
-        // Torna a barra visível ao iniciar a rolagem
         if (barra) barra.style.display = 'block';
 
-        atualizarContadorMusica(obterIndiceMusicaAtualNaTela());
+        // 3. Aguarda uma fração de segundo para o navegador recalcular a página sem os painéis
+        setTimeout(() => {
+            const bloco = document.getElementById(`musica-bloco-${indexFocado}`);
+            if (bloco) {
+                // Calcula exatamente 20% da altura da sua tela
+                const margemTopo = window.innerHeight * 0.20;
+
+                // Força a rolagem suave para cravar o título nessa marca
+                window.scrollTo({
+                    top: window.scrollY + bloco.getBoundingClientRect().top - margemTopo,
+                    behavior: 'smooth'
+                });
+            }
+
+            // 4. Só liga o motor e afere a velocidade depois que a música estiver no lugar certo
+            velocidadGlobalAtual = -1;
+            verificarMusicaVisivelNaTela();
+            atualizarContadorMusica(indexFocado);
+
+        }, 50); // 50ms é rápido o suficiente para parecer instantâneo, mas seguro para o cálculo
     }
 }
 
@@ -1053,11 +1077,15 @@ function envolverAcordesEmSpans(linha) {
 function processarLinhasTexto(texto) {
     return texto.split('\n').map(linha => {
         const lim = linha.trim();
-        if (!lim) return linha;
+
+        // CORREÇÃO: Cria uma linha invisível para manter o espaço do parágrafo
+        if (!lim) return `<div style="height: 1em;"></div>`;
+
         const temMarcadores = lim.includes('[') || lim.includes('(');
         const totalEspacos = (linha.match(/ /g) || []).length;
         const ehEspacada = totalEspacos > lim.length * 0.25;
         const ehLinhaDeAcordes = REGEX_LINHA_ACORDES.test(lim);
+
         if (temMarcadores || ehEspacada || ehLinhaDeAcordes) {
             return `<div class="chord-line">${envolverAcordesEmSpans(linha)}</div>`;
         }
@@ -2155,4 +2183,41 @@ window.addEventListener('load', async () => {
         // Limpa a barra de endereços para não repetir a importação se atualizar a página
         window.history.replaceState({}, document.title, window.location.pathname);
     }
+});
+
+// =========================================================================
+// PAUSAR ROLAGEM AO CLICAR NA TELA (MECÂNICA DE PALCO)
+// =========================================================================
+document.addEventListener('click', (e) => {
+    // Verifica se a rolagem está rodando
+    if (intervaloRolagem) {
+        // Evita que o clique nos botões, painéis ou no menu dispare a pausa dupla
+        const clicouEmControle = e.target.closest('button') || 
+                                 e.target.closest('.sub-control-panel') || 
+                                 e.target.closest('.floating-action-rack') ||
+                                 e.target.closest('.menu-flutuante');
+                                 
+        if (!clicouEmControle) {
+            toggleRolagemGeral();
+            mostrarToast("⏸ Rolagem Pausada");
+        }
+    }
+});
+
+// =========================================================================
+// LEITURA AUTOMÁTICA DE VERSÃO (MANIFEST.JSON)
+// =========================================================================
+window.addEventListener('load', () => {
+    fetch('/manifest.json')
+        .then(response => response.json())
+        .then(data => {
+            if (data.version) {
+                const badge = document.getElementById('app-version-badge');
+                if (badge) {
+                    badge.innerText = 'v' + data.version;
+                    badge.style.display = 'inline-block';
+                }
+            }
+        })
+        .catch(erro => console.error('Erro ao ler versão do manifest:', erro));
 });
