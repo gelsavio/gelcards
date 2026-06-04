@@ -2202,21 +2202,4 @@ document.addEventListener('click', (e) => {
             mostrarToast("⏸ Rolagem Pausada");
         }
     }
-});// =========================================================================
-// LEITURA AUTOMÁTICA DE VERSÃO (MANIFEST.JSON)
-// =========================================================================
-window.addEventListener('load', () => {
-    // O { cache: 'no-store' } é a chave mágica que ignora o Service Worker
-    fetch('manifest.json', { cache: 'no-store' })
-        .then(response => response.json())
-        .then(data => {
-            if (data.version) {
-                const badge = document.getElementById('app-version-badge');
-                if (badge) {
-                    badge.innerText = 'v' + data.version;
-                    badge.style.display = 'inline-block';
-                }
-            }
-        })
-        .catch(erro => console.error('Erro ao ler versão do manifest:', erro));
 });
