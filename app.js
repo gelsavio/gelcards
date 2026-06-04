@@ -50,7 +50,6 @@ function sincronizarEAAplicarInterface() {
     const container = document.getElementById("setlist-container");
     appStorage.listas["Todas as Músicas"] = Object.keys(appStorage.musicasGlobais || {});
 
-
     seletorLista.innerHTML = "";
     const chavesOrdenadas = obterListasOrdenadasChaves();
     chavesOrdenadas.forEach(nomeLista => {
@@ -67,6 +66,9 @@ function sincronizarEAAplicarInterface() {
     const idsMusicasDaLista = appStorage.listas[appStorage.listaAtiva] || [];
 
     if (idsMusicasDaLista.length > 0) {
+        // Objeto para normalizar bemóis na hora da renderização
+        const norm = { Db: "C#", Eb: "D#", Gb: "F#", Ab: "G#", Bb: "A#" };
+
         idsMusicasDaLista.forEach((id, index) => {
             const musica = appStorage.musicasGlobais[id];
             if (!musica) return;
@@ -74,6 +76,13 @@ function sincronizarEAAplicarInterface() {
             const tomExibicao = musica.tomCustomizado || musica.tomOriginal || "C";
             const fonteExibicao = musica.fonteCustomizada || 16;
             const velocidadExibicao = musica.velocidadeCustomizada || 10;
+
+            // --- 1. Extrair índice limpo do tom para não quebrar o data-tom-index ---
+            let matchTomExib = tomExibicao.match(/^([A-G][#b]?)/);
+            let baseExibicao = matchTomExib ? matchTomExib[1] : "C";
+            baseExibicao = norm[baseExibicao] || baseExibicao;
+            let idxExibicao = escalaCromatica.indexOf(baseExibicao);
+            if (idxExibicao === -1) idxExibicao = 0; // Fallback de segurança
 
             let opt = document.createElement("option");
             opt.value = `musica-bloco-${index}`;
@@ -87,7 +96,7 @@ function sincronizarEAAplicarInterface() {
             bloco.id = `musica-bloco-${index}`;
             bloco.setAttribute('data-index', index);
             bloco.setAttribute('data-real-id', id);
-            bloco.setAttribute('data-tom-index', escalaCromatica.indexOf(tomExibicao));
+            bloco.setAttribute('data-tom-index', idxExibicao); // Usa o índice matemático seguro
 
             bloco.innerHTML = `
                 <h2 style="margin:0 0 4px 0;font-size:1.35em;">${escapeHtml(musica.titulo)}</h2>
@@ -153,16 +162,23 @@ function sincronizarEAAplicarInterface() {
             `;
             container.appendChild(bloco);
 
+            // --- 2. Transposição correta ao reconstruir a tela para tons menores ---
             if (musica.tomCustomizado && musica.tomCustomizado !== musica.tomOriginal) {
-                const deltaRender = escalaCromatica.indexOf(musica.tomCustomizado) - escalaCromatica.indexOf(musica.tomOriginal);
-                bloco.querySelectorAll('.chord').forEach(span => {
-                    span.textContent = transporAcorde(span.textContent, deltaRender);
-                });
+                let matchOrig = musica.tomOriginal.match(/^([A-G][#b]?)/);
+                let baseOrig = matchOrig ? matchOrig[1] : "C";
+                baseOrig = norm[baseOrig] || baseOrig;
+                let idxOrig = escalaCromatica.indexOf(baseOrig);
+
+                if (idxExibicao !== -1 && idxOrig !== -1) {
+                    const deltaRender = idxExibicao - idxOrig;
+                    bloco.querySelectorAll('.chord').forEach(span => {
+                        span.textContent = transporAcorde(span.textContent, deltaRender);
+                    });
+                }
             }
 
             // Restaurar capo salvo
             const capoSalvo = musica.capoCustomizado || 0;
-            // Garantir capoOriginal para músicas antigas sem esse campo
             if (musica.capoOriginal === undefined) {
                 musica.capoOriginal = capoSalvo;
                 appStorage.musicasGlobais[musica.id] = musica;
@@ -172,11 +188,13 @@ function sincronizarEAAplicarInterface() {
             const txtCapo = document.getElementById(`capo-txt-${index}`);
             if (inputCapo) inputCapo.value = capoSalvo;
             if (txtCapo) txtCapo.innerText = capoSalvo;
+
             if (capoSalvo > 0) {
                 bloco.querySelectorAll('.chord').forEach(span => {
                     span.textContent = transporAcorde(span.textContent, -capoSalvo);
                 });
-                exibirDicaCapo(index, escalaCromatica.indexOf(tomExibicao), capoSalvo);
+                // Usa o índice limpo que calculamos lá em cima
+                exibirDicaCapo(index, idxExibicao, capoSalvo);
             }
         });
     } else {
