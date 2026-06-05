@@ -1,4 +1,5 @@
-const CACHE_NAME = 'gelcifras-cache-v1';
+// ATENÇÃO: Toda vez que você atualizar o app, mude este número (ex: v2, v3, v4)
+const CACHE_NAME = 'gelcifras-cache-v2';
 
 const ASSETS_TO_CACHE = [
     '/',
@@ -11,20 +12,31 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', event => {
-    self.skipWaiting(); // Força a atualização do Service Worker
+    self.skipWaiting(); // Força o celular a baixar a versão nova imediatamente
     event.waitUntil(
         caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS_TO_CACHE))
     );
 });
 
+// A MÁGICA AQUI: Apaga os arquivos velhos quando a versão do CACHE_NAME muda
 self.addEventListener('activate', event => {
-    event.waitUntil(self.clients.claim());
+    event.waitUntil(
+        caches.keys().then(nomesDosCaches => {
+            return Promise.all(
+                nomesDosCaches.map(nome => {
+                    if (nome !== CACHE_NAME) {
+                        console.log('Apagando cache antigo:', nome);
+                        return caches.delete(nome);
+                    }
+                })
+            );
+        }).then(() => self.clients.claim())
+    );
 });
 
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
 
-    // INTERCEPTA O COMPARTILHAMENTO DE ARQUIVO DO ANDROID
     if (event.request.method === 'POST' && url.pathname === '/_share-target') {
         event.respondWith((async() => {
             try {
@@ -34,19 +46,16 @@ self.addEventListener('fetch', event => {
                 if (file) {
                     const text = await file.text();
                     const cache = await caches.open(CACHE_NAME);
-                    // Guarda o texto extraído no cache
                     await cache.put('/shared-file.txt', new Response(text));
                 }
             } catch (err) {
                 console.error('Erro ao interceptar arquivo:', err);
             }
-            // Redireciona para o app avisando que há um arquivo na URL (?shared=1)
             return Response.redirect('/?shared=1', 303);
         })());
         return;
     }
 
-    // Fluxo normal de cache (offline)
     event.respondWith(
         caches.match(event.request).then(response => response || fetch(event.request))
     );

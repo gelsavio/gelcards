@@ -598,65 +598,87 @@ function alternarTemaFundo() {
     mostrarToast(`Tema: ${nomes[novo]}`);
 }
 
-function obterIndiceMusicaAtualNaTela() {
-    let focado = 0;
-    document.querySelectorAll('.cifra-container').forEach(bloco => {
-        if (bloco.getBoundingClientRect().top <= 160) focado = parseInt(bloco.getAttribute('data-index'));
+function obterBlocoMusicaAtualNaTela() {
+    let blocoFocado = null;
+    // Pega APENAS os blocos visíveis (ignora os que a busca escondeu)
+    const blocosVisiveis = document.querySelectorAll('.cifra-container:not(.busca-oculto)');
+
+    if (blocosVisiveis.length === 0) return null;
+
+    blocoFocado = blocosVisiveis[0]; // fallback para o primeiro
+
+    blocosVisiveis.forEach(bloco => {
+        // Elementos ocultos têm top === 0. Ignorar a classe .busca-oculto garante a leitura real.
+        if (bloco.getBoundingClientRect().top <= 160) {
+            blocoFocado = bloco;
+        }
     });
-    if (intervaloRolagem) atualizarContadorMusica(focado);
-    return focado;
+
+    if (intervaloRolagem) atualizarContadorMusica(blocoFocado);
+    return blocoFocado;
 }
 
-function atualizarContadorMusica(indexAtual) {
+function atualizarContadorMusica(blocoAtual) {
     const placar = document.getElementById('placar-rolagem');
-    if (!placar || !intervaloRolagem) return;
-    const blocos = document.querySelectorAll('.cifra-container');
-    const total = blocos.length;
+    const barra = document.getElementById('barra-progresso-musica');
+    if (!placar || !intervaloRolagem || !blocoAtual) return;
+
+    const blocosVisiveis = Array.from(document.querySelectorAll('.cifra-container:not(.busca-oculto)'));
+    const total = blocosVisiveis.length;
     if (total === 0) return;
-    const bloco = document.getElementById(`musica-bloco-${indexAtual}`);
-    const idReal = bloco ? bloco.getAttribute('data-real-id') : null;
+
+    // Calcula a posição real dentro da lista filtrada (Ex: 1/3 em vez de 1/50)
+    const indexRelativo = blocosVisiveis.indexOf(blocoAtual) + 1;
+    const idReal = blocoAtual.getAttribute('data-real-id');
     const musica = idReal ? appStorage.musicasGlobais[idReal] : null;
     const nomeMusica = musica ? musica.titulo : '';
-    placar.textContent = `${indexAtual + 1} / ${total}  •  ${nomeMusica}`;
+
+    placar.textContent = `${indexRelativo} / ${total}  •  ${nomeMusica}`;
 
     // Cálculo dinâmico do progresso da música atual na tela
-    if (bloco) {
-        const rect = bloco.getBoundingClientRect();
-        const totalDistancia = bloco.offsetHeight;
-        // Calcula quanto o bloco já subiu em relação à linha de corte de 160px
-        const percorrido = 160 - rect.top;
+    const rect = blocoAtual.getBoundingClientRect();
+    const totalDistancia = blocoAtual.offsetHeight;
+    const percorrido = 160 - rect.top;
 
-        let percentual = (percorrido / totalDistancia) * 100;
-        if (percentual < 0) percentual = 0;
-        if (percentual > 100) percentual = 100;
+    let percentual = (percorrido / totalDistancia) * 100;
+    if (percentual < 0) percentual = 0;
+    if (percentual > 100) percentual = 100;
 
-        const barra = document.getElementById('barra-progresso-musica');
-        if (barra) {
-            barra.style.width = `${percentual}%`;
-
-            // Ativa o alerta visual nos últimos 10% da música
-            if (percentual >= 90) {
-                barra.classList.add('alerta');
-            } else {
-                barra.classList.remove('alerta');
-            }
+    if (barra) {
+        barra.style.width = `${percentual}%`;
+        if (percentual >= 90) {
+            barra.classList.add('alerta');
+        } else {
+            barra.classList.remove('alerta');
         }
     }
 }
 
 function navegarEntreMusicas(direcao) {
-    const idxAtual = obterIndiceMusicaAtualNaTela();
+    const blocoAtual = obterBlocoMusicaAtualNaTela();
+    if (!blocoAtual) return;
+
+    const blocosVisiveis = Array.from(document.querySelectorAll('.cifra-container:not(.busca-oculto)'));
+    const idxAtual = blocosVisiveis.indexOf(blocoAtual);
     const proximoIdx = idxAtual + direcao;
-    const totalDeCards = document.querySelectorAll('.cifra-container').length;
+
     if (proximoIdx < 0) {
         mostrarToast("⏮ Primeira música");
         return;
     }
-    if (proximoIdx >= totalDeCards) {
+    if (proximoIdx >= blocosVisiveis.length) {
         mostrarToast("⏭ Fim do roteiro");
         return;
     }
-    pularParaMusica(`musica-bloco-${proximoIdx}`);
+
+    const blocoAlvo = blocosVisiveis[proximoIdx];
+
+    // Se for um bloco temporário de busca global, injetamos um ID de passagem
+    if (!blocoAlvo.id) {
+        blocoAlvo.id = 'busca-alvo-' + Date.now();
+    }
+
+    pularParaMusica(blocoAlvo.id);
 }
 
 function mudarFonteIndividual(indexMusica, delta) {
@@ -858,7 +880,6 @@ function exibirDicaCapo(indexMusica, idxTomAtualBase, casaCapo) {
     dica.className = "capo-dica-inline " + (ehAmigavel ? "capo-dica-ok" : "capo-dica-aviso");
 }
 
-
 function mudarCapoIndividual(indexMusica, delta) {
     const bloco = document.getElementById(`musica-bloco-${indexMusica}`);
     const idReal = bloco.getAttribute('data-real-id');
@@ -908,38 +929,56 @@ function transporAcorde(acorde, semitons) {
 
 function ajustarVelocidadeAtiva(delta) {
     if (!intervaloRolagem) return;
-    const indexAtual = obterIndiceMusicaAtualNaTela();
-    const input = document.getElementById(`vel-musica-${indexAtual}`);
-    const txt = document.getElementById(`vel-txt-${indexAtual}`);
-    if (!input) return;
 
-    const novaVel = Math.min(20, Math.max(1, parseInt(input.value) + delta));
-    input.value = novaVel;
-    if (txt) txt.innerText = novaVel;
+    const bloco = obterBlocoMusicaAtualNaTela();
+    if (!bloco) return;
 
-    // Salvar no storage
-    const bloco = document.getElementById(`musica-bloco-${indexAtual}`);
-    const idReal = bloco ? bloco.getAttribute('data-real-id') : null;
+    const idReal = bloco.getAttribute('data-real-id');
+    const indexAtributo = bloco.getAttribute('data-index');
+
+    // 1. Descobrir a velocidade atual direto do banco de dados
+    let velAtual = 10;
+    if (idReal && appStorage.musicasGlobais[idReal]) {
+        velAtual = appStorage.musicasGlobais[idReal].velocidadeCustomizada || 10;
+    }
+
+    // 2. Calcular nova velocidade (Limites de 1 a 20)
+    const novaVel = Math.min(20, Math.max(1, velAtual + delta));
+
+    // 3. Salvar no banco
     if (idReal && appStorage.musicasGlobais[idReal]) {
         appStorage.musicasGlobais[idReal].velocidadeCustomizada = novaVel;
         localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
     }
 
-    // Reaplicar motor com nova velocidade
+    // 4. Atualizar os visores na tela (se existirem)
+    if (indexAtributo !== null) {
+        const input = document.getElementById(`vel-musica-${indexAtributo}`);
+        const txt = document.getElementById(`vel-txt-${indexAtributo}`);
+        if (input) input.value = novaVel;
+        if (txt) txt.innerText = novaVel;
+    }
+
+    // 5. Reaplicar motor sem gaguejar
     velocidadGlobalAtual = novaVel;
     redefinirMotorRolagem(novaVel);
     mostrarToast(`Velocidade: ${novaVel}`);
 }
 
 function verificarMusicaVisivelNaTela() {
-    const focado = obterIndiceMusicaAtualNaTela();
-    const input = document.getElementById(`vel-musica-${focado}`);
-    if (input) {
-        const vel = parseInt(input.value);
-        if (vel !== velocidadGlobalAtual) {
-            velocidadGlobalAtual = vel;
-            redefinirMotorRolagem(vel);
-        }
+    const bloco = obterBlocoMusicaAtualNaTela();
+    if (!bloco) return;
+
+    const idReal = bloco.getAttribute('data-real-id');
+    let vel = 10;
+
+    if (idReal && appStorage.musicasGlobais[idReal]) {
+        vel = appStorage.musicasGlobais[idReal].velocidadeCustomizada || 10;
+    }
+
+    if (vel !== velocidadGlobalAtual) {
+        velocidadGlobalAtual = vel;
+        redefinirMotorRolagem(vel);
     }
 }
 
@@ -961,7 +1000,6 @@ function toggleRolagemGeral() {
         const placarOff = document.getElementById('placar-rolagem');
         if (placarOff) placarOff.style.display = 'none';
 
-        // Oculta e reseta a barra de progresso ao pausar
         if (barra) {
             barra.style.display = 'none';
             barra.style.width = '0%';
@@ -972,10 +1010,8 @@ function toggleRolagemGeral() {
         btn.innerText = "■";
         btn.classList.add("active");
 
-        // 1. Salva a música que você estava lendo ANTES da tela "encolher"
-        const indexFocado = obterIndiceMusicaAtualNaTela();
+        const blocoFocado = obterBlocoMusicaAtualNaTela();
 
-        // 2. Esconde os painéis visuais
         paineisPalco.forEach(p => p.classList.add('ocultar-dinamico'));
         toggleTelaCheia(true);
         document.body.classList.add('rolagem-ativa');
@@ -984,26 +1020,20 @@ function toggleRolagemGeral() {
         if (placar) placar.style.display = 'block';
         if (barra) barra.style.display = 'block';
 
-        // 3. Aguarda uma fração de segundo para o navegador recalcular a página sem os painéis
         setTimeout(() => {
-            const bloco = document.getElementById(`musica-bloco-${indexFocado}`);
-            if (bloco) {
-                // Calcula exatamente 20% da altura da sua tela
+            if (blocoFocado) {
                 const margemTopo = window.innerHeight * 0.20;
-
-                // Força a rolagem suave para cravar o título nessa marca
                 window.scrollTo({
-                    top: window.scrollY + bloco.getBoundingClientRect().top - margemTopo,
+                    top: window.scrollY + blocoFocado.getBoundingClientRect().top - margemTopo,
                     behavior: 'smooth'
                 });
             }
 
-            // 4. Só liga o motor e afere a velocidade depois que a música estiver no lugar certo
             velocidadGlobalAtual = -1;
             verificarMusicaVisivelNaTela();
-            atualizarContadorMusica(indexFocado);
+            if (blocoFocado) atualizarContadorMusica(blocoFocado);
 
-        }, 50); // 50ms é rápido o suficiente para parecer instantâneo, mas seguro para o cálculo
+        }, 50);
     }
 }
 
@@ -1759,25 +1789,22 @@ function fecharMenuFlutuanteExterno(e) {
         fecharMenuFlutuante();
     }
 }
-
 // =========================================================================
 // BUSCA DE MÚSICA
 // =========================================================================
 function toggleBusca() {
     const wrapper = document.getElementById('barra-busca-wrapper');
     const campo = document.getElementById('campo-busca');
-    const btn = document.getElementById('btn-busca');
     const visivel = wrapper.style.display !== 'none';
+    
     if (visivel) {
         wrapper.style.display = 'none';
         campo.value = '';
         filtrarBusca('');
-        btn.classList.remove('active');
         document.querySelectorAll('.card-busca-global').forEach(el => el.remove());
     } else {
         wrapper.style.display = 'block';
         campo.focus();
-        btn.classList.add('active');
     }
 }
 
@@ -1800,7 +1827,12 @@ function filtrarBusca(termo) {
     const resultados = todosIds.filter(id => {
         const m = appStorage.musicasGlobais[id];
         if (!m) return false;
-        return (m.titulo + ' ' + (m.artista || '')).toLowerCase().includes(t);
+        
+        // A MÁGICA AQUI: Verifica título, artista e também o corpo da cifra/letra
+        const infoBasica = (m.titulo + ' ' + (m.artista || '')).toLowerCase();
+        const letra = (m.letraCifra || '').toLowerCase();
+        
+        return infoBasica.includes(t) || letra.includes(t);
     });
 
     // Músicas que já estão renderizadas (da lista ativa)
@@ -2188,18 +2220,37 @@ window.addEventListener('load', async () => {
 // =========================================================================
 // PAUSAR ROLAGEM AO CLICAR NA TELA (MECÂNICA DE PALCO)
 // =========================================================================
-document.addEventListener('click', (e) => {
-    // Verifica se a rolagem está rodando
-    if (intervaloRolagem) {
-        // Evita que o clique nos botões, painéis ou no menu dispare a pausa dupla
-        const clicouEmControle = e.target.closest('button') || 
-                                 e.target.closest('.sub-control-panel') || 
-                                 e.target.closest('.floating-action-rack') ||
-                                 e.target.closest('.menu-flutuante');
-                                 
-        if (!clicouEmControle) {
-            toggleRolagemGeral();
-            mostrarToast("⏸ Rolagem Pausada");
-        }
-    }
+//document.addEventListener('click', (e) => {
+   // Verifica se a rolagem está rodando
+   //  if (intervaloRolagem) {
+   // Evita que o clique nos botões, painéis ou no menu dispare a pausa dupla
+   //    const clicouEmControle = e.target.closest('button') || 
+   //                           e.target.closest('.sub-control-panel') || 
+   //                         e.target.closest('.floating-action-rack') ||
+   //                       e.target.closest('.menu-flutuante');
+   //                     
+   //if (!clicouEmControle) {
+   //  toggleRolagemGeral();
+   //mostrarToast("⏸ Rolagem Pausada");
+   //}
+   //}
+//});
+
+// =========================================================================
+// LEITURA AUTOMÁTICA DE VERSÃO (MANIFEST.JSON)
+// =========================================================================
+window.addEventListener('load', () => {
+    // O { cache: 'no-store' } é a chave mágica que ignora o Service Worker
+    fetch('manifest.json', { cache: 'no-store' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.version) {
+                const badge = document.getElementById('app-version-badge');
+                if (badge) {
+                    badge.innerText = 'v' + data.version;
+                    badge.style.display = 'inline-block';
+                }
+            }
+        })
+        .catch(erro => console.error('Erro ao ler versão do manifest:', erro));
 });

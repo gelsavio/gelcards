@@ -26,20 +26,24 @@
                 <select id="seletor-lista" onchange="alternarListaAtiva(this.value)"></select>
                 <select id="seletor-musica" onchange="pularParaMusica(this.value)"></select>
             </div>
+
+            <!-- A MÁGICA AQUI: Barra de busca movida para o cabeçalho fixo -->
+            <div class="barra-busca-wrapper" id="barra-busca-wrapper" style="display:none; width: 100%; padding: 10px 0 0 0;">
+                <input type="text" id="campo-busca" class="campo-busca" placeholder="🔍 Buscar música ou artista…" oninput="filtrarBusca(this.value)" autocomplete="off">
+            </div>
         </div>
     </header>
 
     <div id="placar-rolagem" class="placar-rolagem" style="display:none;"></div>
 
     <div class="container">
-        <div class="barra-busca-wrapper" id="barra-busca-wrapper" style="display:none;">
-            <input type="text" id="campo-busca" class="campo-busca" placeholder="🔍 Buscar música ou artista…" oninput="filtrarBusca(this.value)" autocomplete="off">
-        </div>
+        <!-- A barra de busca saiu daqui de dentro -->
         <div id="setlist-container"></div>
     </div>
 
     <!-- Rack flutuante enxuto -->
     <div class="floating-action-rack">
+        <button class="btn-float btn-busca" onclick="toggleBusca(); fecharMenuFlutuante();" title="Buscar Música">🔍</button>
         <button class="btn-float btn-menu" onclick="toggleMenuFlutuante()" title="Menu">☰</button>
         <button id="btn-ocultar-chords" class="btn-float" onclick="toggleOcultarAcordesRepertorio()" title="Ocultar Acordes">🎤</button>
         <button class="btn-float btn-nav-tracks" onclick="navegarEntreMusicas(-1)" title="Música Anterior">⏮</button>
@@ -56,11 +60,8 @@
             <span>Inserir Nova Música</span>
         </div>
 
-        <!--   <div class="menu-flutuante-item" onclick="toggleBusca(); fecharMenuFlutuante();">
-            <span class="menu-flutuante-icone">🔍</span>
-            <span>Buscar Música</span>
-        </div>
- -->
+
+
         <div class="menu-flutuante-item" onclick="abrirModalAdmin(); fecharMenuFlutuante();">
             <span class="menu-flutuante-icone">⚙️</span>
             <span>Gerenciar Listas</span>
@@ -148,7 +149,7 @@
                         </div>
                         <div class="biblioteca-item" onclick="importarBibliotecaFixa('pedeserra')">
                             <span class="biblioteca-icone">🪗</span>
-                            <span class="biblioteca-nome">Pé de Serra</span>
+                            <span class="biblioteca-nome">Forró Pé de Serra</span>
                             <span class="biblioteca-seta">›</span>
                         </div>
                     </div>
