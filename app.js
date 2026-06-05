@@ -1817,11 +1817,13 @@ function toggleBusca() {
     
     if (visivel) {
         wrapper.style.display = 'none';
+        document.body.classList.remove('busca-ativa'); // Desce a música
         campo.value = '';
         filtrarBusca('');
         document.querySelectorAll('.card-busca-global').forEach(el => el.remove());
     } else {
         wrapper.style.display = 'block';
+        document.body.classList.add('busca-ativa'); // Empurra a música para baixo
         campo.focus();
     }
 }

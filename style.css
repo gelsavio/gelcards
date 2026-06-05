@@ -1051,3 +1051,11 @@ kbd {
     opacity: 1;
     transform: scale(1.4);
 }
+
+
+/* ── COMPENSAÇÃO DA BARRA DE BUSCA MOBILE ───────────────────────── */
+
+body.busca-ativa .container {
+    padding-top: 155px;
+    transition: padding-top 0.2s ease;
+}
