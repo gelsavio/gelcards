@@ -981,7 +981,10 @@ kbd {
     background-color: #ef4444 !important;
     box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
 }
+
+
 /* ── RACK TRANSPARENTE DURANTE ROLAGEM ───────────────────────────── */
+
 .rolagem-ativa .floating-action-rack {
     opacity: 0.15;
     transition: opacity 0.3s ease;
@@ -991,7 +994,9 @@ kbd {
     opacity: 1;
 }
 
+
 /* ── BOTÕES DE VELOCIDADE RÁPIDA (só durante rolagem) ────────────── */
+
 .btn-vel-rapida {
     width: 42px;
     height: 42px;
@@ -1005,7 +1010,7 @@ kbd {
     display: none;
     justify-content: center;
     align-items: center;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     transition: all 0.2s ease;
 }
 
@@ -1016,4 +1021,33 @@ kbd {
 .btn-vel-rapida:hover {
     filter: brightness(1.3);
     opacity: 1 !important;
+}
+
+
+/* ── METRÔNOMO VISUAL (BPM) ──────────────────────────────────────── */
+
+.visual-metronome {
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background-color: #ef4444;
+    /* Vermelho vivo padrão */
+    z-index: 1002;
+    opacity: 0;
+    pointer-events: none;
+    box-shadow: 0 0 12px #ef4444;
+    transition: transform 0.1s ease-out, opacity 0.15s ease-out;
+    display: none;
+    /* Invisível por padrão */
+}
+
+
+/* A classe que o JavaScript vai injetar para dar a "batida" */
+
+.visual-metronome.beat {
+    opacity: 1;
+    transform: scale(1.4);
 }

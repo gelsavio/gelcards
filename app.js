@@ -14,6 +14,9 @@ let velocidadGlobalAtual = 10;
 let travaTemporariaScroll = false;
 let backupTemporarioParaProcessar = null;
 const escalaCromatica = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+let intervaloMetronomo = null;
+let bpmAtual = 0;
+
 
 window.addEventListener('load', () => {
     const temaSalvo = localStorage.getItem('theme') || 'light';
@@ -76,6 +79,7 @@ function sincronizarEAAplicarInterface() {
             const tomExibicao = musica.tomCustomizado || musica.tomOriginal || "C";
             const fonteExibicao = musica.fonteCustomizada || 16;
             const velocidadExibicao = musica.velocidadeCustomizada || 10;
+            const bpmExibicao = musica.bpmCustomizado || 0;
 
             // --- 1. Extrair índice limpo do tom para não quebrar o data-tom-index ---
             let matchTomExib = tomExibicao.match(/^([A-G][#b]?)/);
@@ -140,6 +144,16 @@ function sincronizarEAAplicarInterface() {
                             <span id="vel-txt-${index}" class="num-display">${velocidadExibicao}</span>
                             <button class="btn-num" onclick="mudarVelocidadeIndividual(${index}, 1)">+</button>
                             <input type="hidden" id="vel-musica-${index}" value="${velocidadExibicao}">
+                        </div>
+                    </div>
+                    <div class="panel-column">
+                        <span class="sub-txt-label">BPM</span>
+                        <div class="adjustment-row">
+                            <button class="btn-num" onclick="mudarBpmIndividual(${index}, -1)">−</button>
+                            <span id="bpm-txt-${index}" class="num-display">${bpmExibicao}</span>
+                            <button class="btn-num" onclick="mudarBpmIndividual(${index}, 1)">+</button>
+                            <button class="btn-num" onclick="mudarBpmIndividual(${index}, 10)" style="font-size:9px;" title="Somar 10">+10</button>
+                            <input type="hidden" id="bpm-musica-${index}" value="${bpmExibicao}">
                         </div>
                     </div>
                     <div class="panel-column" style="min-width:90px;">
@@ -980,6 +994,7 @@ function verificarMusicaVisivelNaTela() {
         velocidadGlobalAtual = vel;
         redefinirMotorRolagem(vel);
     }
+    verificarMetronomo()
 }
 
 function toggleRolagemGeral() {
@@ -991,6 +1006,7 @@ function toggleRolagemGeral() {
         // --- PAUSAR ROLAGEM ---
         clearInterval(intervaloRolagem);
         intervaloRolagem = null;
+        pararMetronomo();
         btn.innerText = "▶";
         btn.classList.remove("active");
         paineisPalco.forEach(p => p.classList.remove('ocultar-dinamico'));
@@ -1030,6 +1046,8 @@ function toggleRolagemGeral() {
             }
 
             velocidadGlobalAtual = -1;
+            bpmAtual = -1;
+            verificarMetronomo();
             verificarMusicaVisivelNaTela();
             if (blocoFocado) atualizarContadorMusica(blocoFocado);
 
@@ -2254,3 +2272,80 @@ window.addEventListener('load', () => {
         })
         .catch(erro => console.error('Erro ao ler versão do manifest:', erro));
 });
+
+// =========================================================================
+// METRÔNOMO VISUAL DE PALCO (BPM)
+// =========================================================================
+
+function mudarBpmIndividual(indexMusica, delta) {
+    const bloco = document.getElementById(`musica-bloco-${indexMusica}`);
+    const idReal = bloco.getAttribute('data-real-id');
+    const input = document.getElementById(`bpm-musica-${indexMusica}`);
+
+    // Garante que o BPM não fique negativo
+    const novoBpm = Math.max(0, parseInt(input.value) + delta);
+    
+    input.value = novoBpm;
+    document.getElementById(`bpm-txt-${indexMusica}`).innerText = novoBpm;
+
+    // Salva no banco de dados local
+    if (appStorage.musicasGlobais[idReal]) {
+        appStorage.musicasGlobais[idReal].bpmCustomizado = novoBpm;
+        localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
+    }
+
+    // Se a música estiver rolando, ajusta o metrônomo em tempo real
+    if (intervaloRolagem) verificarMetronomo();
+}
+
+function iniciarMetronomo(bpm) {
+    const dot = document.getElementById('visual-metronome');
+    if (!dot) return;
+
+    if (intervaloMetronomo) clearInterval(intervaloMetronomo);
+
+    if (bpm <= 0) {
+        dot.style.display = 'none';
+        return;
+    }
+
+    // A mágica matemática: 60 milissegundos divididos pelo BPM
+    const msPorBatida = 60000 / bpm;
+    dot.style.display = 'block';
+
+    intervaloMetronomo = setInterval(() => {
+        dot.classList.add('beat'); // Dá o "soco" visual
+        
+        setTimeout(() => {
+            dot.classList.remove('beat'); // Apaga rapidamente
+        }, 120); // Duração do "flash"
+        
+    }, msPorBatida);
+}
+
+function pararMetronomo() {
+    if (intervaloMetronomo) clearInterval(intervaloMetronomo);
+    intervaloMetronomo = null;
+    const dot = document.getElementById('visual-metronome');
+    if (dot) {
+        dot.style.display = 'none';
+        dot.classList.remove('beat');
+    }
+}
+
+function verificarMetronomo() {
+    const bloco = obterBlocoMusicaAtualNaTela();
+    if (!bloco) return;
+    
+    const idReal = bloco.getAttribute('data-real-id');
+    let bpm = 0;
+    
+    if (idReal && appStorage.musicasGlobais[idReal]) {
+        bpm = appStorage.musicasGlobais[idReal].bpmCustomizado || 0;
+    }
+    
+    if (bpm !== bpmAtual) {
+        bpmAtual = bpm;
+        iniciarMetronomo(bpm);
+    }
+}
