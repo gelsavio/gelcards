@@ -641,7 +641,7 @@ function atualizarContadorMusica(blocoAtual) {
     const total = blocosVisiveis.length;
     if (total === 0) return;
 
-    // Calcula a posição real dentro da lista filtrada (Ex: 1/3 em vez de 1/50)
+    // Calcula a posição real dentro da lista filtrada
     const indexRelativo = blocosVisiveis.indexOf(blocoAtual) + 1;
     const idReal = blocoAtual.getAttribute('data-real-id');
     const musica = idReal ? appStorage.musicasGlobais[idReal] : null;
@@ -649,17 +649,25 @@ function atualizarContadorMusica(blocoAtual) {
 
     placar.textContent = `${indexRelativo} / ${total}  •  ${nomeMusica}`;
 
-    // Cálculo dinâmico do progresso da música atual na tela
+    // Cálculo dinâmico do progresso (Ajuste Tático para o Meio da Tela)
     const rect = blocoAtual.getBoundingClientRect();
     const totalDistancia = blocoAtual.offsetHeight;
     const percorrido = 160 - rect.top;
 
-    let percentual = (percorrido / totalDistancia) * 100;
+    // A MÁGICA: A linha de chegada agora é a metade da tela
+    const margemFim = window.innerHeight / 2;
+    let distanciaAjustada = totalDistancia - margemFim + 160;
+
+    // Trava de segurança para músicas muito curtas (menores que a tela)
+    if (distanciaAjustada < 100) distanciaAjustada = totalDistancia;
+
+    let percentual = (percorrido / distanciaAjustada) * 100;
     if (percentual < 0) percentual = 0;
     if (percentual > 100) percentual = 100;
 
     if (barra) {
         barra.style.width = `${percentual}%`;
+        // O alerta visual de 90% agora vai disparar bem mais cedo
         if (percentual >= 90) {
             barra.classList.add('alerta');
         } else {
