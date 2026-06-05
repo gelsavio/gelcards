@@ -1813,17 +1813,24 @@ function fecharMenuFlutuanteExterno(e) {
 function toggleBusca() {
     const wrapper = document.getElementById('barra-busca-wrapper');
     const campo = document.getElementById('campo-busca');
+    const btnBusca = document.querySelector('.btn-busca'); // Encontra o botão da lupa
     const visivel = wrapper.style.display !== 'none';
     
     if (visivel) {
+        // Fechando a busca
         wrapper.style.display = 'none';
-        document.body.classList.remove('busca-ativa'); // Desce a música
+        document.body.classList.remove('busca-ativa');
+        if (btnBusca) btnBusca.classList.remove('active'); // Apaga a luz do botão
+        
         campo.value = '';
         filtrarBusca('');
         document.querySelectorAll('.card-busca-global').forEach(el => el.remove());
     } else {
+        // Abrindo a busca
         wrapper.style.display = 'block';
-        document.body.classList.add('busca-ativa'); // Empurra a música para baixo
+        document.body.classList.add('busca-ativa');
+        if (btnBusca) btnBusca.classList.add('active'); // Acende a luz do botão verde
+        
         campo.focus();
     }
 }
