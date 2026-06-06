@@ -49,6 +49,91 @@ function obterListasOrdenadasChaves() {
     }));
     return ["Todas as Músicas", ...chavesFiltradas];
 }
+// =========================================================================
+// FÁBRICA CENTRAL DE COMPONENTES HTML
+// =========================================================================
+function gerarHtmlCardMusica(musica, idControle, idRealBanco, isBuscaGlobal = false) {
+    const tomExibicao = musica.tomCustomizado || musica.tomOriginal || "C";
+    const fonteExibicao = musica.fonteCustomizada || 16;
+    const velocidadExibicao = musica.velocidadeCustomizada || 10;
+    const bpmExibicao = musica.bpmCustomizado || 0;
+    const capoSalvo = musica.capoCustomizado || 0;
+
+    // Se for uma busca global, injeta o letreiro de aviso
+    const badgeBusca = isBuscaGlobal ?
+        `<div style="font-size:10px;font-weight:700;color:var(--chord-color);margin-bottom:4px;text-transform:uppercase;">🔍 Resultado de Busca Global</div>` :
+        '';
+
+    return `
+        ${badgeBusca}
+        <h2 style="margin:0 0 4px 0;font-size:1.35em;">${escapeHtml(musica.titulo)}</h2>
+        <div style="color:var(--text-muted);margin-bottom:12px;font-size:12px;">Por: <strong>${escapeHtml(musica.artista || "Desconhecido")}</strong></div>
+
+        <div class="sub-control-panel">
+            <div class="panel-column" style="min-width:115px;">
+                <span class="sub-txt-label">Tom <button class="btn-reset-tom" onclick="resetarTomOriginalFabrica('${idControle}', '${escapeHtml(musica.tomOriginal)}')" title="Retornar ao Tom Original">🔄</button></span>
+                <div class="adjustment-row">
+                    <button class="btn-num" onclick="mudarTomIndividual('${idControle}', -1)">−</button>
+                    <span id="tom-txt-${idControle}" class="num-display">${escapeHtml(tomExibicao)}</span>
+                    <button class="btn-num" onclick="mudarTomIndividual('${idControle}', 1)">+</button>
+                </div>
+            </div>
+            <div class="panel-column">
+                <span class="sub-txt-label">Capo <span id="capo-dica-${idControle}" class="capo-dica-inline"></span> <button class="btn-reset-tom" onclick="resetarCapoOriginal('${idControle}', ${musica.capoOriginal || 0})" title="Restaurar Capo Original">🔄</button></span>
+                <div class="adjustment-row">
+                    <button class="btn-num" onclick="mudarCapoIndividual('${idControle}', -1)">−</button>
+                    <span id="capo-txt-${idControle}" class="num-display">${capoSalvo}</span>
+                    <button class="btn-num" onclick="mudarCapoIndividual('${idControle}', 1)">+</button>
+                    <input type="hidden" id="capo-select-${idControle}" value="${capoSalvo}">
+                </div>
+            </div>
+            <div class="panel-column">
+                <span class="sub-txt-label">Fonte</span>
+                <div class="adjustment-row">
+                    <button class="btn-num" onclick="mudarFonteIndividual('${idControle}', -1)">−</button>
+                    <span id="fonte-txt-${idControle}" class="num-display">${fonteExibicao}</span>
+                    <button class="btn-num" onclick="mudarFonteIndividual('${idControle}', 1)">+</button>
+                    <input type="hidden" id="fonte-musica-${idControle}" value="${fonteExibicao}">
+                </div>
+            </div>
+            <div class="panel-column">
+                <span class="sub-txt-label">Velocidade</span>
+                <div class="adjustment-row">
+                    <button class="btn-num" onclick="mudarVelocidadeIndividual('${idControle}', -1)">−</button>
+                    <span id="vel-txt-${idControle}" class="num-display">${velocidadExibicao}</span>
+                    <button class="btn-num" onclick="mudarVelocidadeIndividual('${idControle}', 1)">+</button>
+                    <input type="hidden" id="vel-musica-${idControle}" value="${velocidadExibicao}">
+                </div>
+            </div>
+            <div class="panel-column">
+                <span class="sub-txt-label">BPM <button class="btn-reset-tom" onclick="resetarBpm('${idControle}')" title="Zerar BPM">🔄</button></span>
+                <div class="adjustment-row">
+                    <button class="btn-num" onclick="mudarBpmIndividual('${idControle}', -1)">−</button>
+                    <span id="bpm-txt-${idControle}" class="num-display">${bpmExibicao}</span>
+                    <button class="btn-num" onclick="mudarBpmIndividual('${idControle}', 1)">+</button>
+                    <button class="btn-num" onclick="mudarBpmIndividual('${idControle}', 10)" style="font-size:9px;" title="Somar 10">+10</button>
+                    <input type="hidden" id="bpm-musica-${idControle}" value="${bpmExibicao}">
+                </div>
+            </div>
+            <div class="panel-column" style="min-width:90px;">
+                <span class="sub-txt-label">Edição</span>
+                <div class="adjustment-row">
+                    <button class="btn-action-card" onclick="abrirPainelVinculacaoLista('${idRealBanco}', '${idControle}')" title="Listas">📋</button>
+                    <button class="btn-action-card" style="border-color: var(--chord-color);" onclick="abrirModalEditarCifra('${idRealBanco}')" title="Editar">✏️</button>
+                    <button class="btn-action-card" style="border-color:#f87171;" onclick="excluirMusicaGeral('${idRealBanco}')" title="Excluir">🗑️</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="inline-panel-${idControle}" class="inline-playlist-panel">
+            <div style="font-size:11px;font-weight:bold;color:var(--text-muted);margin-bottom:4px;">Exibir esta música em:</div>
+            <div id="inline-grid-${idControle}" class="inline-check-grid"></div>
+        </div>
+
+        <hr style="border:0;border-top:1px solid var(--border-color);margin:0;">
+        <pre id="corpo-cifra-${idControle}" style="font-size: ${fonteExibicao}px;">${processarLinhasTexto(musica.letraCifra)}</pre>
+    `;
+}
 
 function sincronizarEAAplicarInterface() {
     const seletorLista = document.getElementById("seletor-lista");
@@ -112,79 +197,10 @@ function sincronizarEAAplicarInterface() {
             bloco.setAttribute('data-index', index);
             bloco.setAttribute('data-real-id', id);
             bloco.setAttribute('data-tom-index', idxExibicao); // Usa o índice matemático seguro
+            // O HTML gigante foi substituído por esta chamada:
+            bloco.innerHTML = gerarHtmlCardMusica(musica, index, id, false);
 
-            bloco.innerHTML = `
-                <h2 style="margin:0 0 4px 0;font-size:1.35em;">${escapeHtml(musica.titulo)}</h2>
-                <div style="color:var(--text-muted);margin-bottom:12px;font-size:12px;">Por: <strong>${escapeHtml(musica.artista || "Desconhecido")}</strong></div>
-
-                <div class="${classeOcultamentoInicial}">
-                    <div class="panel-column" style="min-width:115px;">
-                        <span class="sub-txt-label">
-                            Tom
-                            <button class="btn-reset-tom" onclick="resetarTomOriginalFabrica(${index}, '${escapeHtml(musica.tomOriginal)}')" title="Retornar ao Tom Original">🔄</button>
-                        </span>
-
-                        <div class="adjustment-row">
-                            <button class="btn-num" onclick="mudarTomIndividual(${index}, -1)">−</button>
-                            <span id="tom-txt-${index}" class="num-display">${escapeHtml(tomExibicao)}</span>
-                            <button class="btn-num" onclick="mudarTomIndividual(${index}, 1)">+</button>
-                        </div>
-                    </div>
-                    <div class="panel-column">
-                        <span class="sub-txt-label">Capo <span id="capo-dica-${index}" class="capo-dica-inline"></span> <button class="btn-reset-tom" onclick="resetarCapoOriginal(${index}, ${musica.capoOriginal || 0})" title="Restaurar Capo Original">🔄</button></span>
-                        <div class="adjustment-row">
-                            <button class="btn-num" onclick="mudarCapoIndividual(${index}, -1)">−</button>
-                            <span id="capo-txt-${index}" class="num-display">0</span>
-                            <button class="btn-num" onclick="mudarCapoIndividual(${index}, 1)">+</button>
-                            <input type="hidden" id="capo-select-${index}" value="0">
-                        </div>
-                    </div>
-                    <div class="panel-column">
-                        <span class="sub-txt-label">Fonte</span>
-                        <div class="adjustment-row">
-                            <button class="btn-num" onclick="mudarFonteIndividual(${index}, -1)">−</button>
-                            <span id="fonte-txt-${index}" class="num-display">${fonteExibicao}</span>
-                            <button class="btn-num" onclick="mudarFonteIndividual(${index}, 1)">+</button>
-                            <input type="hidden" id="fonte-musica-${index}" value="${fonteExibicao}">
-                        </div>
-                    </div>
-                    <div class="panel-column">
-                        <span class="sub-txt-label">Velocidade</span>
-                        <div class="adjustment-row">
-                            <button class="btn-num" onclick="mudarVelocidadeIndividual(${index}, -1)">−</button>
-                            <span id="vel-txt-${index}" class="num-display">${velocidadExibicao}</span>
-                            <button class="btn-num" onclick="mudarVelocidadeIndividual(${index}, 1)">+</button>
-                            <input type="hidden" id="vel-musica-${index}" value="${velocidadExibicao}">
-                        </div>
-                    </div>
-                    <div class="panel-column">
-                            <span class="sub-txt-label">BPM <button class="btn-reset-tom" onclick="resetarBpm(${index})" title="Zerar BPM">🔄</button></span>                        <div class="adjustment-row">
-                            <button class="btn-num" onclick="mudarBpmIndividual(${index}, -1)">−</button>
-                            <span id="bpm-txt-${index}" class="num-display">${bpmExibicao}</span>
-                            <button class="btn-num" onclick="mudarBpmIndividual(${index}, 1)">+</button>
-                            <button class="btn-num" onclick="mudarBpmIndividual(${index}, 10)" style="font-size:9px;" title="Somar 10">+10</button>
-                            <input type="hidden" id="bpm-musica-${index}" value="${bpmExibicao}">
-                        </div>
-                    </div>
-                    <div class="panel-column" style="min-width:90px;">
-                        <span class="sub-txt-label">Edição</span>
-                        <div class="adjustment-row">
-                            <button class="btn-action-card" onclick="abrirPainelVinculacaoLista('${id}', ${index})" title="Listas">📋</button>
-                            <button class="btn-action-card" style="border-color: var(--chord-color);" onclick="abrirModalEditarCifra('${id}')" title="Editar">✏️</button>
-                            <button class="btn-action-card" style="border-color:#f87171;" onclick="excluirMusicaGeral('${id}')" title="Excluir">🗑️</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="inline-panel-${index}" class="inline-playlist-panel">
-                    <div style="font-size:11px;font-weight:bold;color:var(--text-muted);margin-bottom:4px;">Exibir esta música em:</div>
-                    <div id="inline-grid-${index}" class="inline-check-grid"></div>
-                </div>
-
-                <hr style="border:0;border-top:1px solid var(--border-color);margin:0;">
-                <pre id="corpo-cifra-${index}" style="font-size: ${fonteExibicao}px;">${processarLinhasTexto(musica.letraCifra)}</pre>
-            `;
-            container.appendChild(bloco);
+            container.appendChild(bloco); // <- Mantenha essa linha que já existia logo abaixo
 
             // --- 2. Transposição correta ao reconstruir a tela para tons menores ---
             if (musica.tomCustomizado && musica.tomCustomizado !== musica.tomOriginal) {
@@ -1932,7 +1948,6 @@ function filtrarBusca(termo) {
         const m = appStorage.musicasGlobais[id];
         if (!m) return false;
         
-        // A MÁGICA AQUI: Verifica título, artista e também o corpo da cifra/letra
         const infoBasica = (m.titulo + ' ' + (m.artista || '')).toLowerCase();
         const letra = (m.letraCifra || '').toLowerCase();
         
@@ -1951,28 +1966,68 @@ function filtrarBusca(termo) {
         }
     });
 
-    // Músicas fora da lista ativa: renderizar temporariamente
+    // Músicas fora da lista ativa: renderizar temporariamente COM O PAINEL COMPLETO
     const idsForaDaLista = resultados.filter(id => !idsDaLista.includes(id));
-    // Remover cards temporários anteriores
     container.querySelectorAll('.card-busca-global').forEach(el => el.remove());
 
-    idsForaDaLista.forEach(id => {
-        const musica = appStorage.musicasGlobais[id];
-        if (!musica) return;
-        const tomExibicao = musica.tomCustomizado || musica.tomOriginal || 'C';
-        const fonteExibicao = musica.fonteCustomizada || 16;
-        const div = document.createElement('div');
-        div.className = 'cifra-container card-busca-global busca-destaque';
-        div.setAttribute('data-real-id', id);
-        div.innerHTML = `
-            <div style="font-size:10px;font-weight:700;color:var(--chord-color);margin-bottom:4px;text-transform:uppercase;">🔍 Resultado de busca global</div>
-            <h2 style="margin:0 0 4px 0;font-size:1.35em;">${escapeHtml(musica.titulo)}</h2>
-            <div style="color:var(--text-muted);margin-bottom:12px;font-size:12px;">Por: <strong>${escapeHtml(musica.artista || 'Desconhecido')}</strong> &nbsp;|&nbsp; Tom: ${escapeHtml(tomExibicao)}</div>
-            <hr style="border:0;border-top:1px solid var(--border-color);margin:0;">
-            <pre style="font-size:${fonteExibicao}px;">${processarLinhasTexto(musica.letraCifra)}</pre>
-        `;
-        container.appendChild(div);
-    });
+    if (idsForaDaLista.length > 0) {
+        const norm = { Db: "C#", Eb: "D#", Gb: "F#", Ab: "G#", Bb: "A#" };
+
+        idsForaDaLista.forEach(id => {
+            const musica = appStorage.musicasGlobais[id];
+            if (!musica) return;
+            
+            const tomExibicao = musica.tomCustomizado || musica.tomOriginal || "C";
+            const fonteExibicao = musica.fonteCustomizada || 16;
+            const velocidadExibicao = musica.velocidadeCustomizada || 10;
+            const bpmExibicao = musica.bpmCustomizado || 0;
+
+            let matchTomExib = tomExibicao.match(/^([A-G][#b]?)/);
+            let baseExibicao = matchTomExib ? matchTomExib[1] : "C";
+            baseExibicao = norm[baseExibicao] || baseExibicao;
+            let idxExibicao = escalaCromatica.indexOf(baseExibicao);
+            if (idxExibicao === -1) idxExibicao = 0;
+
+            // Criamos um "ID cego" para os botões não conflitrarem com os da lista real
+            const idxBusca = `busca_${id}`;
+            const capoSalvo = musica.capoCustomizado || 0;
+
+            const div = document.createElement('div');
+            div.className = 'cifra-container card-busca-global busca-destaque';
+            div.id = `musica-bloco-${idxBusca}`;
+            div.setAttribute('data-real-id', id);
+            div.setAttribute('data-index', idxBusca);
+            div.setAttribute('data-tom-index', idxExibicao);
+            div.setAttribute('data-capo', capoSalvo);
+
+            // O HTML gigante da busca substituído por:
+            div.innerHTML = gerarHtmlCardMusica(musica, idxBusca, id, true);
+            
+            container.appendChild(div); // <- Mantenha essa linha
+
+            // Aplica as transições matemáticas caso a música já estivesse alterada no banco
+            if (musica.tomCustomizado && musica.tomCustomizado !== musica.tomOriginal) {
+                let matchOrig = musica.tomOriginal.match(/^([A-G][#b]?)/);
+                let baseOrig = matchOrig ? matchOrig[1] : "C";
+                baseOrig = norm[baseOrig] || baseOrig;
+                let idxOrig = escalaCromatica.indexOf(baseOrig);
+
+                if (idxExibicao !== -1 && idxOrig !== -1) {
+                    const deltaRender = idxExibicao - idxOrig;
+                    div.querySelectorAll('.chord').forEach(span => {
+                        span.textContent = transporAcorde(span.textContent, deltaRender);
+                    });
+                }
+            }
+
+            if (capoSalvo > 0) {
+                div.querySelectorAll('.chord').forEach(span => {
+                    span.textContent = transporAcorde(span.textContent, -capoSalvo);
+                });
+                exibirDicaCapo(idxBusca, idxExibicao, capoSalvo);
+            }
+        });
+    }
 }
 
 // =========================================================================

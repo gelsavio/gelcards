@@ -1,7 +1,7 @@
 {
     "short_name": "GelCifras",
     "name": "GelCifras - Gerenciador de Cifras",
-    "version": "2.0",
+    "version": "2.5",
     "icons": [{
         "src": "apple-touch-icon.png",
         "type": "image/png",
