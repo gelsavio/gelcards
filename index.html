@@ -20,6 +20,12 @@
                 <div class="brand-box">
                     <h1>GelCifras</h1>
                     <p>Gerenciador de Exibição em Lista<span id="app-version-badge" style="background: var(--chord-color); color: white; padding: 2px 6px; border-radius: 8px; font-size: 10px; font-weight: bold; margin-left: 6px; display: none;"></span></p>
+
+                    <!-- NOVA PRATELEIRA: Nome da lista e relógio de tempo total -->
+                    <div style="font-size: 12px; font-weight: bold; color: #fcd34d; margin-top: 4px; display: flex; align-items: center; gap: 6px;">
+                        <span id="header-nome-lista">Nenhuma lista</span>
+                        <span id="badge-tempo-show" style="background: var(--success-color); color: white; padding: 2px 6px; border-radius: 8px; font-size: 10px; font-weight: bold; display: none;">⏱️ 0m</span>
+                    </div>
                 </div>
             </div>
             <div class="selectors-group">
@@ -37,6 +43,7 @@
     <div id="placar-rolagem" class="placar-rolagem" style="display:none;"></div>
     <div id="placar-rolagem" class="placar-rolagem" style="display:none;"></div>
     <div id="visual-metronome" class="visual-metronome"></div>
+    <div id="overlay-contagem" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); font-size:120px; font-weight:900; color:var(--chord-color); z-index:9999; text-shadow: 0 4px 15px rgba(0,0,0,0.4); pointer-events: none;"></div>
 
     <div class="container">
         <!-- A barra de busca saiu daqui de dentro -->
@@ -45,13 +52,13 @@
 
     <!-- Rack flutuante enxuto -->
     <div class="floating-action-rack">
+        <button class="btn-vel-rapida" onclick="ajustarVelocidadeAtiva(1)" title="Aumentar velocidade">+</button>
+        <button class="btn-vel-rapida" onclick="ajustarVelocidadeAtiva(-1)" title="Diminuir velocidade">−</button>
         <button class="btn-float btn-busca" onclick="toggleBusca(); fecharMenuFlutuante();" title="Buscar Música">🔍</button>
         <button class="btn-float btn-menu" onclick="toggleMenuFlutuante()" title="Menu">☰</button>
         <button id="btn-ocultar-chords" class="btn-float" onclick="toggleOcultarAcordesRepertorio()" title="Ocultar Acordes">🎤</button>
         <button class="btn-float btn-nav-tracks" onclick="navegarEntreMusicas(-1)" title="Música Anterior">⏮</button>
         <button class="btn-float btn-nav-tracks" onclick="navegarEntreMusicas(1)" title="Próxima Música">⏭</button>
-        <button class="btn-vel-rapida" onclick="ajustarVelocidadeAtiva(1)" title="Aumentar velocidade">+</button>
-        <button class="btn-vel-rapida" onclick="ajustarVelocidadeAtiva(-1)" title="Diminuir velocidade">−</button>
         <button id="btn-scroll" class="btn-float" onclick="toggleRolagemGeral()" title="Iniciar Rolagem">▶</button>
     </div>
 
@@ -102,6 +109,14 @@
             <div class="modal-header">
                 <h3>🛠️ Gerenciador GelCifras</h3>
                 <button class="btn-fechar-modal" onclick="fecharModalAdmin()">&times;</button>
+            </div>
+
+            <div class="admin-section">
+                <h4>⏱️ Configurações de Palco</h4>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <label style="font-size:12px; font-weight:bold;">Atraso para iniciar rolagem (segundos):</label>
+                    <input type="number" id="input-delay-partida" class="input-text" style="width: 70px; margin:0;" min="0" max="15" value="0" onchange="salvarDelayPartida(this.value)">
+                </div>
             </div>
 
             <div class="admin-section">

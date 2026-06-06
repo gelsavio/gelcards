@@ -948,7 +948,7 @@ kbd {
     letter-spacing: 0.3px;
     white-space: nowrap;
     transition: opacity 0.3s ease;
-    max-width: 220px;
+    max-width: 75vw;
     overflow: hidden;
     text-overflow: ellipsis;
 }

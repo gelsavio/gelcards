@@ -16,6 +16,7 @@ let backupTemporarioParaProcessar = null;
 const escalaCromatica = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 let intervaloMetronomo = null;
 let bpmAtual = 0;
+let intervaloContagem = null;
 
 
 window.addEventListener('load', () => {
@@ -26,6 +27,8 @@ window.addEventListener('load', () => {
         localStorage.setItem('gelcifras_db', JSON.stringify(dadosIniciaisVazios));
     }
     appStorage = JSON.parse(localStorage.getItem('gelcifras_db'));
+
+    if (!appStorage.configGlobais) appStorage.configGlobais = { delayPartida: 0 };
 
     if (!appStorage.listas["Todas as Músicas"]) {
         appStorage.listas["Todas as Músicas"] = Object.keys(appStorage.musicasGlobais || {});
@@ -53,13 +56,21 @@ function sincronizarEAAplicarInterface() {
     const container = document.getElementById("setlist-container");
     appStorage.listas["Todas as Músicas"] = Object.keys(appStorage.musicasGlobais || {});
 
-    seletorLista.innerHTML = "";
+    // INJEÇÃO TÁTICA: Escreve o nome da lista no cabeçalho
+    const headerNomeLista = document.getElementById("header-nome-lista");
+    if (headerNomeLista) {
+        headerNomeLista.innerText = appStorage.listaAtiva;
+    }
+
+    // ALTERAÇÃO DO SELETOR: Cria o placeholder fixo igual ao das músicas
+    seletorLista.innerHTML = '<option value="" disabled selected hidden>Ir para lista…</option>';
+
     const chavesOrdenadas = obterListasOrdenadasChaves();
     chavesOrdenadas.forEach(nomeLista => {
         let opt = document.createElement("option");
         opt.value = nomeLista;
         opt.text = nomeLista;
-        if (nomeLista === appStorage.listaAtiva) opt.selected = true;
+        // Removemos o 'opt.selected = true' para que o botão sempre volte para "Ir para lista..."
         seletorLista.appendChild(opt);
     });
 
@@ -147,8 +158,7 @@ function sincronizarEAAplicarInterface() {
                         </div>
                     </div>
                     <div class="panel-column">
-                        <span class="sub-txt-label">BPM</span>
-                        <div class="adjustment-row">
+                            <span class="sub-txt-label">BPM <button class="btn-reset-tom" onclick="resetarBpm(${index})" title="Zerar BPM">🔄</button></span>                        <div class="adjustment-row">
                             <button class="btn-num" onclick="mudarBpmIndividual(${index}, -1)">−</button>
                             <span id="bpm-txt-${index}" class="num-display">${bpmExibicao}</span>
                             <button class="btn-num" onclick="mudarBpmIndividual(${index}, 1)">+</button>
@@ -214,6 +224,8 @@ function sincronizarEAAplicarInterface() {
     } else {
         container.innerHTML = "<div style='padding:50px 20px;text-align:center;color:var(--text-muted); font-weight:bold;'>Sua lista está limpa. Clique na engrenagem (⚙️) para adicionar cifras!</div>";
     }
+    // Inicia a calculadora após meio segundo para dar tempo do navegador desenhar a tela
+    setTimeout(calcularTempoTotalShow, 500);
 }
 
 function alternarListaAtiva(nomeLista) {
@@ -336,6 +348,8 @@ function fecharModalTutorialExterno(e) {
 }
 
 function abrirModalAdmin() {
+    const inputDelay = document.getElementById("input-delay-partida");
+    if (inputDelay) inputDelay.value = appStorage.configGlobais.delayPartida || 0;
     document.getElementById("modal-admin-container").classList.add("active");
     const lblLista = document.getElementById("txt-nome-lista-backup");
     if (lblLista) lblLista.innerText = `"${appStorage.listaAtiva}"`;
@@ -641,24 +655,22 @@ function atualizarContadorMusica(blocoAtual) {
     const total = blocosVisiveis.length;
     if (total === 0) return;
 
-    // Calcula a posição real dentro da lista filtrada
+    // Posição e Título
     const indexRelativo = blocosVisiveis.indexOf(blocoAtual) + 1;
     const idReal = blocoAtual.getAttribute('data-real-id');
     const musica = idReal ? appStorage.musicasGlobais[idReal] : null;
-    const nomeMusica = musica ? musica.titulo : '';
+    let nomeMusica = musica ? musica.titulo : '';
 
-    placar.textContent = `${indexRelativo} / ${total}  •  ${nomeMusica}`;
+    if (nomeMusica.length > 100) {
+        nomeMusica = nomeMusica.substring(0, 97) + '...';
+    }
 
-    // Cálculo dinâmico do progresso (Ajuste Tático para o Meio da Tela)
+    // Cálculo da Barra de Progresso
     const rect = blocoAtual.getBoundingClientRect();
     const totalDistancia = blocoAtual.offsetHeight;
     const percorrido = 160 - rect.top;
-
-    // A MÁGICA: A linha de chegada agora é a metade da tela
     const margemFim = window.innerHeight / 2;
     let distanciaAjustada = totalDistancia - margemFim + 160;
-
-    // Trava de segurança para músicas muito curtas (menores que a tela)
     if (distanciaAjustada < 100) distanciaAjustada = totalDistancia;
 
     let percentual = (percorrido / distanciaAjustada) * 100;
@@ -667,13 +679,50 @@ function atualizarContadorMusica(blocoAtual) {
 
     if (barra) {
         barra.style.width = `${percentual}%`;
-        // O alerta visual de 90% agora vai disparar bem mais cedo
-        if (percentual >= 90) {
-            barra.classList.add('alerta');
-        } else {
-            barra.classList.remove('alerta');
-        }
+        if (percentual >= 90) barra.classList.add('alerta');
+        else barra.classList.remove('alerta');
     }
+
+    // === CÁLCULO DE TEMPO RESTANTE DO SHOW ===
+    let tempoRestanteMs = 0;
+    const mapaTempos = [400, 360, 320, 280, 240, 205, 175, 145, 115, 85, 70, 58, 48, 40, 34, 29, 25, 19, 14, 10];
+    const idxAtual = blocosVisiveis.indexOf(blocoAtual);
+
+    // A MÁGICA TÁTICA AQUI: Identifica se a letra está comprimida
+    const containerSetlist = document.getElementById("setlist-container");
+    const modoCantarAtivo = containerSetlist && containerSetlist.classList.contains("ocultar-acordes");
+
+    // 1. O que falta rolar da música atual
+    let velAtual = 10;
+    if (idReal && appStorage.musicasGlobais[idReal]) velAtual = appStorage.musicasGlobais[idReal].velocidadeCustomizada || 10;
+    let tempoEsperaAtual = mapaTempos[Math.min(20, Math.max(1, velAtual)) - 1];
+
+    // Compensa a perda de altura da música reduzindo a velocidade pela metade
+    if (modoCantarAtivo) tempoEsperaAtual *= 2;
+
+    // Multiplica os pixels que faltam pela velocidade atual
+    const pixelsRestantesAtual = Math.max(0, totalDistancia - percorrido);
+    tempoRestanteMs += pixelsRestantesAtual * tempoEsperaAtual;
+
+    // 2. Tempo de todas as músicas que ainda vêm pela frente
+    for (let i = idxAtual + 1; i < blocosVisiveis.length; i++) {
+        const b = blocosVisiveis[i];
+        const idB = b.getAttribute('data-real-id');
+        const v = (idB && appStorage.musicasGlobais[idB]) ? (appStorage.musicasGlobais[idB].velocidadeCustomizada || 10) : 10;
+        let tEspera = mapaTempos[Math.min(20, Math.max(1, v)) - 1];
+
+        // Compensa a perda de altura para o resto da lista também
+        if (modoCantarAtivo) tEspera *= 2;
+
+        tempoRestanteMs += (b.offsetHeight * tEspera);
+        tempoRestanteMs += 15000;
+    }
+
+    // Formata o cronômetro
+    const minRestantes = Math.max(1, Math.ceil(tempoRestanteMs / 60000));
+    let textoRestante = minRestantes >= 60 ? `${Math.floor(minRestantes/60)}h ${minRestantes%60}m` : `${minRestantes}m`;
+
+    placar.textContent = `${indexRelativo} / ${total}  •  ⏳ ~${textoRestante}  •  ${nomeMusica}`;
 }
 
 function navegarEntreMusicas(direcao) {
@@ -731,6 +780,7 @@ function mudarVelocidadeIndividual(indexMusica, delta) {
     if (appStorage.musicasGlobais[idReal]) {
         appStorage.musicasGlobais[idReal].velocidadeCustomizada = nova;
         localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
+        setTimeout(calcularTempoTotalShow, 200);
     }
 
     if (intervaloRolagem) verificarMusicaVisivelNaTela();
@@ -971,6 +1021,7 @@ function ajustarVelocidadeAtiva(delta) {
     if (idReal && appStorage.musicasGlobais[idReal]) {
         appStorage.musicasGlobais[idReal].velocidadeCustomizada = novaVel;
         localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
+        setTimeout(calcularTempoTotalShow, 200);
     }
 
     // 4. Atualizar os visores na tela (se existirem)
@@ -1010,11 +1061,20 @@ function toggleRolagemGeral() {
     const paineisPalco = document.querySelectorAll('.sub-control-panel');
     const barra = document.getElementById('barra-progresso-musica');
 
-    if (intervaloRolagem) {
-        // --- PAUSAR ROLAGEM ---
-        clearInterval(intervaloRolagem);
-        intervaloRolagem = null;
+    if (intervaloRolagem || intervaloContagem) {
+        // --- PAUSAR ROLAGEM / CANCELAR CONTAGEM ---
+        if (intervaloContagem) {
+            clearInterval(intervaloContagem);
+            intervaloContagem = null;
+            const overlay = document.getElementById('overlay-contagem');
+            if (overlay) overlay.style.display = 'none';
+        }
+        if (intervaloRolagem) {
+            clearInterval(intervaloRolagem);
+            intervaloRolagem = null;
+        }
         pararMetronomo();
+
         btn.innerText = "▶";
         btn.classList.remove("active");
         paineisPalco.forEach(p => p.classList.remove('ocultar-dinamico'));
@@ -1053,35 +1113,44 @@ function toggleRolagemGeral() {
                 });
             }
 
-            velocidadGlobalAtual = -1;
-            bpmAtual = -1;
-            verificarMetronomo();
-            verificarMusicaVisivelNaTela();
-            if (blocoFocado) atualizarContadorMusica(blocoFocado);
+            const delay = (appStorage.configGlobais && appStorage.configGlobais.delayPartida) ? appStorage.configGlobais.delayPartida : 0;
 
+            if (delay > 0) {
+                iniciarContagemRegressiva(delay, () => {
+                    velocidadGlobalAtual = -1;
+                    bpmAtual = -1;
+                    verificarMetronomo();
+                    verificarMusicaVisivelNaTela();
+                    if (blocoFocado) atualizarContadorMusica(blocoFocado);
+                });
+            } else {
+                velocidadGlobalAtual = -1;
+                bpmAtual = -1;
+                verificarMetronomo();
+                verificarMusicaVisivelNaTela();
+                if (blocoFocado) atualizarContadorMusica(blocoFocado);
+            }
         }, 50);
     }
 }
 
 function redefinirMotorRolagem(velocidade) {
     if (intervaloRolagem) clearInterval(intervaloRolagem);
+
     const mapaTempos = [400, 360, 320, 280, 240, 205, 175, 145, 115, 85, 70, 58, 48, 40, 34, 29, 25, 19, 14, 10];
-    const tempoEspera = mapaTempos[Math.min(20, Math.max(1, velocidade)) - 1];
+    let tempoEspera = mapaTempos[Math.min(20, Math.max(1, velocidade)) - 1];
+
+    // A MÁGICA FÍSICA: Se as cifras estão ocultas, o trajeto cai pela metade.
+    // Logo, dobramos o tempo de espera para manter a mesma duração de show.
+    const container = document.getElementById("setlist-container");
+    if (container && container.classList.contains("ocultar-acordes")) {
+        tempoEspera = tempoEspera * 2;
+    }
+
     intervaloRolagem = setInterval(() => window.scrollBy(0, 1), tempoEspera);
 }
 
-function toggleOcultarAcordesRepertorio() {
-    const container = document.getElementById("setlist-container");
-    const btn = document.getElementById("btn-ocultar-chords");
-    container.classList.toggle("ocultar-acordes");
-    if (container.classList.contains("ocultar-acordes")) {
-        btn.classList.add("active");
-        mostrarToast("Modo Cantar: Letra Pura");
-    } else {
-        btn.classList.remove("active");
-        mostrarToast("Modo Músico: Acordes Visíveis");
-    }
-}
+
 
 function pularParaMusica(idBloco) {
     if (!idBloco) return;
@@ -2365,4 +2434,129 @@ function verificarMetronomo() {
         bpmAtual = bpm;
         iniciarMetronomo(bpm);
     }
+}
+
+function resetarBpm(indexMusica) {
+    const bloco = document.getElementById(`musica-bloco-${indexMusica}`);
+    const idReal = bloco.getAttribute('data-real-id');
+    const input = document.getElementById(`bpm-musica-${indexMusica}`);
+
+    input.value = 0;
+    document.getElementById(`bpm-txt-${indexMusica}`).innerText = 0;
+
+    if (appStorage.musicasGlobais[idReal]) {
+        appStorage.musicasGlobais[idReal].bpmCustomizado = 0;
+        localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
+    }
+
+    if (intervaloRolagem) verificarMetronomo();
+    mostrarToast("BPM zerado!");
+}function salvarDelayPartida(valor) {
+    if (!appStorage.configGlobais) appStorage.configGlobais = {};
+    appStorage.configGlobais.delayPartida = Math.max(0, parseInt(valor) || 0);
+    localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
+    mostrarToast(`Atraso de partida: ${appStorage.configGlobais.delayPartida}s`);
+}
+
+function iniciarContagemRegressiva(segundos, callback) {
+    const overlay = document.getElementById('overlay-contagem');
+    let tempoRestante = segundos;
+    overlay.innerText = tempoRestante;
+    overlay.style.display = 'block';
+
+    intervaloContagem = setInterval(() => {
+        tempoRestante--;
+        if (tempoRestante > 0) {
+            overlay.innerText = tempoRestante;
+        } else {
+            clearInterval(intervaloContagem);
+            intervaloContagem = null;
+            overlay.style.display = 'none';
+            callback(); // Acabou o tempo, liga o motor de rolagem!
+        }
+    }, 1000);
+}
+// =========================================================================
+// MODO CANTAR (OCULTAR ACORDES)
+// =========================================================================
+function toggleOcultarAcordesRepertorio() {
+    const container = document.getElementById("setlist-container");
+    const btn = document.getElementById("btn-ocultar-chords");
+    
+    if (!container || !btn) return;
+
+    container.classList.toggle("ocultar-acordes");
+    
+    // Recalibra o motor instantaneamente se a música já estiver rodando
+    if (intervaloRolagem && velocidadGlobalAtual > 0) {
+        redefinirMotorRolagem(velocidadGlobalAtual);
+    }
+
+    // FORÇA O RECÁLCULO VISUAL: Pede um milissegundo para o CSS encolher a tela e recalcula os relógios
+    setTimeout(() => {
+        calcularTempoTotalShow();
+        if (intervaloRolagem) verificarMusicaVisivelNaTela();
+    }, 150);
+
+    if (container.classList.contains("ocultar-acordes")) {
+        btn.classList.add("active");
+        mostrarToast("Modo Cantar: Letra Pura (Velocidade adaptada)");
+    } else {
+        btn.classList.remove("active");
+        mostrarToast("Modo Músico: Acordes Visíveis (Velocidade normal)");
+    }
+}
+
+// =========================================================================
+// CALCULADORA DE TEMPO DE SHOW
+// =========================================================================
+function calcularTempoTotalShow() {
+    const badgeTempo = document.getElementById('badge-tempo-show');
+    if (!badgeTempo) return;
+
+    const container = document.getElementById('setlist-container');
+    if (container && container.hasAttribute('data-modo-busca-global')) return;
+
+    const blocos = document.querySelectorAll('.cifra-container:not(.busca-oculto)');
+    if (blocos.length === 0) {
+        badgeTempo.style.display = 'none';
+        return;
+    }
+
+    const mapaTempos = [400, 360, 320, 280, 240, 205, 175, 145, 115, 85, 70, 58, 48, 40, 34, 29, 25, 19, 14, 10];
+    let tempoTotalMs = 0;
+    
+    // Verifica se o painel está no modo comprimido
+    const modoCantarAtivo = container && container.classList.contains("ocultar-acordes");
+
+    blocos.forEach(bloco => {
+        const idReal = bloco.getAttribute('data-real-id');
+        if (!idReal || !appStorage.musicasGlobais[idReal]) return;
+        
+        const vel = appStorage.musicasGlobais[idReal].velocidadeCustomizada || 10;
+        let tempoEspera = mapaTempos[Math.min(20, Math.max(1, vel)) - 1]; // ms por pixel
+        
+        // COMPENSAÇÃO FÍSICA
+        if (modoCantarAtivo) tempoEspera *= 2; 
+        
+        const altura = bloco.offsetHeight || 0;
+        tempoTotalMs += (altura * tempoEspera);
+    });
+
+    const tempoPausaMs = blocos.length * 15000; 
+    tempoTotalMs += tempoPausaMs;
+
+    const totalMinutos = Math.ceil(tempoTotalMs / 60000);
+    
+    let textoTempo = '';
+    if (totalMinutos >= 60) {
+        const horas = Math.floor(totalMinutos / 60);
+        const min = totalMinutos % 60;
+        textoTempo = `${horas}h ${min}m`;
+    } else {
+        textoTempo = `${totalMinutos}m`;
+    }
+
+    badgeTempo.innerText = `⏱️ ~${textoTempo}`;
+    badgeTempo.style.display = 'inline-block';
 }
