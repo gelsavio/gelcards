@@ -41,7 +41,6 @@
     </header>
 
     <div id="placar-rolagem" class="placar-rolagem" style="display:none;"></div>
-    <div id="placar-rolagem" class="placar-rolagem" style="display:none;"></div>
     <div id="visual-metronome" class="visual-metronome"></div>
     <div id="overlay-contagem" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); font-size:120px; font-weight:900; color:var(--chord-color); z-index:9999; text-shadow: 0 4px 15px rgba(0,0,0,0.4); pointer-events: none;"></div>
 
@@ -117,7 +116,7 @@
             </div>
 
             <div class="admin-section">
-                <h4>📁 Criar Nova Lista (Setlist)</h4>
+                <h4>📁 Criar Nova Lista</h4>
                 <div style="display: flex; gap: 8px;">
                     <input type="text" id="input-nova-lista" class="input-text" style="margin:0;" placeholder="Ex: Show de Sábado, Forró das Antigas...">
                     <button class="btn-pequeno" onclick="criarNovaListaUsuario()">Criar</button>
@@ -138,7 +137,7 @@
             </div>
 
             <div class="admin-section">
-                <h4>📑 Reordenar Sequência do Show</h4>
+                <h4>📑 Reordenar Sequência da Lista</h4>
                 <div style="margin-bottom:8px; display:flex; align-items:center; gap:8px;">
                     <label style="font-size:12px; font-weight:bold;">Lista alvo:</label>
                     <select id="seletor-lista-ordem" onchange="renderizarPainelOrdenacao(this.value)" style="max-width:100%; background:var(--card-bg); color:var(--text-color); border-color:var(--border-color);"></select>
@@ -148,31 +147,42 @@
 
             <div class="admin-section">
                 <h4>📂 Importar Repertório (.txt)</h4>
-                <div style="margin-bottom:10px;">
-                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px;">Biblioteca do App</div>
+
+                <div style="margin-bottom: 20px;">
+                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 8px;">Biblioteca do App</div>
+
                     <div class="biblioteca-lista">
-                        <div class="biblioteca-item" onclick="importarBibliotecaFixa('brega')">
-                            <span class="biblioteca-icone">🎵</span>
-                            <span class="biblioteca-nome">Brega</span>
+                        <div class="biblioteca-item" onclick="importarBibliotecaFixa('repertorio_missa')" style="cursor: pointer; padding: 10px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center;">
+                            <span class="biblioteca-icone" style="margin-right: 12px;">🙏</span>
+                            <span class="biblioteca-nome" style="flex-grow: 1;">Missa - De pé pela fé</span>
                             <span class="biblioteca-seta">›</span>
                         </div>
-                        <div class="biblioteca-item" onclick="importarBibliotecaFixa('rockbrasil')">
-                            <span class="biblioteca-icone">🎸</span>
-                            <span class="biblioteca-nome">Rock Brasil</span>
+
+                        <div class="biblioteca-item" onclick="importarBibliotecaFixa('repertorio_brega')" style="cursor: pointer; padding: 10px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center;">
+                            <span class="biblioteca-icone" style="margin-right: 12px;">🎵</span>
+                            <span class="biblioteca-nome" style="flex-grow: 1;">Brega</span>
                             <span class="biblioteca-seta">›</span>
                         </div>
-                        <div class="biblioteca-item" onclick="importarBibliotecaFixa('pedeserra')">
-                            <span class="biblioteca-icone">🪗</span>
-                            <span class="biblioteca-nome">Forró Pé de Serra</span>
+
+                        <div class="biblioteca-item" onclick="importarBibliotecaFixa('repertorio_rock_nacional')" style="cursor: pointer; padding: 10px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center;">
+                            <span class="biblioteca-icone" style="margin-right: 12px;">🎸</span>
+                            <span class="biblioteca-nome" style="flex-grow: 1;">Rock Nacional</span>
+                            <span class="biblioteca-seta">›</span>
+                        </div>
+
+                        <div class="biblioteca-item" onclick="importarBibliotecaFixa('repertorio_forro_pe_de_serra')" style="cursor: pointer; padding: 10px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center;">
+                            <span class="biblioteca-icone" style="margin-right: 12px;">🪗</span>
+                            <span class="biblioteca-nome" style="flex-grow: 1;">Forró Pé de Serra</span>
                             <span class="biblioteca-seta">›</span>
                         </div>
                     </div>
                 </div>
+
                 <div>
-                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px;">Arquivo Local</div>
-                    <label class="btn-import-file" for="input-upload-txt">📁 Escolher arquivo .txt</label>
+                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 6px;">Arquivo Local</div>
+                    <label class="btn-import-file" for="input-upload-txt" style="display: block; padding: 10px; border: 1px dashed var(--border-color); text-align: center; cursor: pointer; border-radius: 8px;">          📁 Escolher arquivo .txt          </label>
                     <input type="file" id="input-upload-txt" accept=".txt,application/json" style="display:none;" onchange="importarArquivoLocal(this)">
-                    <span id="label-arquivo-escolhido" style="font-size:11px;color:var(--text-muted);margin-left:8px;">nenhum arquivo selecionado</span>
+                    <span id="label-arquivo-escolhido" style="display: block; font-size: 11px; color: var(--text-muted); margin-top: 6px;">Nenhum arquivo selecionado</span>
                 </div>
             </div>
 

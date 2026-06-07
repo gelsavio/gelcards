@@ -622,7 +622,7 @@ function executarRestauracaoMescladaAmigavel() {
 
 function fecharModalAdmin() {
     document.getElementById("modal-admin-container").classList.remove("active");
-    document.getElementById("input-cifra-bruta").value = "";
+    document.getElementById("input-cifra-bruta").value = ""; // ← campo do modal CADASTRAR, não do admin
 }
 
 function fecharModalAdminExterno(e) {
@@ -1255,10 +1255,13 @@ function fecharModalCadastrar() {
 // IMPORTAÇÃO DE REPERTÓRIO (.txt / URL / Biblioteca)
 // =========================================================================
 
+
 const BIBLIOTECA_FIXA = {
-    brega: '/setlists/brega.txt',
-    rockbrasil: '/setlists/rockbrasil.txt',
-    pedeserra: '/setlists/pedeserra.txt',
+    'repertorio_brega': { url: 'repertorios/repertorio_brega.txt', nome: 'Brega' },
+    'repertorio_missa': { url: 'repertorios/repertorio_missa.txt', nome: 'Missa (Tempo Comum)' },
+    'repertorio_rock_nacional': { url: 'repertorios/repertorio_rock_nacional.txt', nome: 'Rock Nacional' },
+    'repertorio_forro_pe_de_serra': { url: 'repertorios/repertorio_forro_pe_de_serra.txt', nome: 'Forró Pé de Serra' },
+    'repertorio_novo_estilo': { url: 'repertorios/repertorio_novo_estilo.txt', nome: 'Novo Estilo' }
 };
 
 function processarJsonImportado(jsonTexto, nomeOrigem) {
@@ -1291,18 +1294,28 @@ function importarArquivoLocal(input) {
     reader.readAsText(arquivo, 'UTF-8');
 }
 
+
+
 async function importarBibliotecaFixa(chave) {
-    const url = BIBLIOTECA_FIXA[chave];
-    if (!url) return;
-    const nomes = { brega: 'Brega', rockbrasil: 'Rock Brasil', pedeserra: 'Pé de Serra' };
-    mostrarToast(`⏳ Carregando ${nomes[chave]}…`);
+    const item = BIBLIOTECA_FIXA[chave];
+
+    if (!item) {
+        console.error('Chave não encontrada na biblioteca:', chave);
+        return;
+    }
+
+    mostrarToast(`⏳ Carregando ${item.nome}…`);
+
     try {
-        const res = await fetch(url);
+        const res = await fetch(item.url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
         const texto = await res.text();
-        processarJsonImportado(texto, nomes[chave]);
+        processarJsonImportado(texto, item.nome);
+
     } catch (err) {
-        mostrarToast(`❌ Não foi possível carregar. Verifique se o arquivo existe no Netlify.`);
+        console.error(err);
+        mostrarToast(`❌ Não foi possível carregar ${item.nome}. Verifique a conexão.`);
     }
 }
 
