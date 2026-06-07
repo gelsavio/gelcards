@@ -1257,11 +1257,10 @@ function fecharModalCadastrar() {
 
 
 const BIBLIOTECA_FIXA = {
-    'repertorio_brega': { url: 'repertorios/repertorio_brega.txt', nome: 'Brega' },
-    'repertorio_missa': { url: 'repertorios/repertorio_missa.txt', nome: 'Missa (Tempo Comum)' },
-    'repertorio_rock_nacional': { url: 'repertorios/repertorio_rock_nacional.txt', nome: 'Rock Nacional' },
-    'repertorio_forro_pe_de_serra': { url: 'repertorios/repertorio_forro_pe_de_serra.txt', nome: 'Forró Pé de Serra' },
-    'repertorio_novo_estilo': { url: 'repertorios/repertorio_novo_estilo.txt', nome: 'Novo Estilo' }
+    'repertorio_brega': { url: 'setlist/repertorio_brega.txt', nome: 'Brega' },
+    'repertorio_missa': { url: 'setlist/repertorio_missa.txt', nome: 'Missa (Tempo Comum)' },
+    'repertorio_rock_nacional': { url: 'setlist/repertorio_rock_nacional.txt', nome: 'Rock Nacional' },
+    'repertorio_forro_pe_de_serra': { url: 'setlist/repertorio_forro_pe_de_serra.txt', nome: 'Forró Pé de Serra' },
 };
 
 function processarJsonImportado(jsonTexto, nomeOrigem) {
