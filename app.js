@@ -1072,6 +1072,8 @@ function verificarMusicaVisivelNaTela() {
     verificarMetronomo()
 }
 
+
+
 function toggleRolagemGeral() {
     const btn = document.getElementById("btn-scroll");
     const paineisPalco = document.querySelectorAll('.sub-control-panel');
