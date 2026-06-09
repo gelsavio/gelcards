@@ -1074,70 +1074,36 @@ function verificarMusicaVisivelNaTela() {
 
 function toggleRolagemGeral() {
     const btn = document.getElementById("btn-scroll");
-    const paineisPalco = document.querySelectorAll('.sub-control-panel');
-    const barra = document.getElementById('barra-progresso-musica');
-
     if (intervaloRolagem || intervaloContagem) {
-        // --- PAUSAR ROLAGEM / CANCELAR CONTAGEM ---
-        if (intervaloContagem) {
-            clearInterval(intervaloContagem);
-            intervaloContagem = null;
-            const overlay = document.getElementById('overlay-contagem');
-            if (overlay) overlay.style.display = 'none';
-        }
-        if (intervaloRolagem) {
-            clearInterval(intervaloRolagem);
-            intervaloRolagem = null;
-        }
-        pararMetronomo();
-
+        // Pausar
+        clearInterval(intervaloRolagem);
+        intervaloRolagem = null;
+        clearInterval(intervaloContagem);
+        intervaloContagem = null;
         btn.innerText = "▶";
         btn.classList.remove("active");
-        paineisPalco.forEach(p => p.classList.remove('ocultar-dinamico'));
-        toggleTelaCheia(false);
         document.body.classList.remove('rolagem-ativa');
-
-        const placarOff = document.getElementById('placar-rolagem');
-        if (placarOff) placarOff.style.display = 'none';
-
-        if (barra) {
-            barra.style.display = 'none';
-            barra.style.width = '0%';
-            barra.classList.remove('alerta');
-        }
+        document.getElementById('placar-rolagem').style.display = 'none';
     } else {
-        // --- INICIAR ROLAGEM ---
+        // Iniciar
         btn.innerText = "■";
         btn.classList.add("active");
 
-        // AJUSTE: Usamos uma margem maior para garantir que pegamos o bloco correto
-        // e não o anterior que pode estar apenas parcialmente visível no topo
         const blocoFocado = obterBlocoMusicaAtualNaTela();
+        if (blocoFocado) {
+            const rect = blocoFocado.getBoundingClientRect();
+            // CORREÇÃO: scroll instantâneo para evitar conflito com a rolagem automática
+            window.scrollTo({
+                top: window.scrollY + rect.top - (window.innerHeight * 0.15),
+                behavior: 'instant'
+            });
+        }
 
-        paineisPalco.forEach(p => p.classList.add('ocultar-dinamico'));
-        toggleTelaCheia(true);
-        document.body.classList.add('rolagem-ativa');
-
-        const placar = document.getElementById('placar-rolagem');
-        if (placar) placar.style.display = 'block';
-
-        // Pequeno delay para garantir que o layout 'ocultar-dinamico' terminou de subir
         setTimeout(() => {
-            if (blocoFocado) {
-                const rect = blocoFocado.getBoundingClientRect();
-                // Só scrolla se o bloco estiver muito longe do topo (evita saltos desnecessários)
-                if (rect.top < 100 || rect.top > 300) {
-                    const margemTopo = window.innerHeight * 0.15;
-                    window.scrollTo({
-                        top: window.scrollY + rect.top - margemTopo,
-                        behavior: 'smooth'
-                    });
-                }
-            }
-
-            const delay = (appStorage.configGlobais && appStorage.configGlobais.delayPartida) ? appStorage.configGlobais.delayPartida : 0;
-            // ... (resto da lógica de contagem permanece igual)
-        }, 200); // Aumentei um pouco o delay para estabilizar o layout
+            redefinirMotorRolagem(velocidadGlobalAtual);
+            document.body.classList.add('rolagem-ativa');
+            document.getElementById('placar-rolagem').style.display = 'block';
+        }, 300);
     }
 }
 
@@ -1145,16 +1111,17 @@ function redefinirMotorRolagem(velocidade) {
     if (intervaloRolagem) clearInterval(intervaloRolagem);
 
     const mapaTempos = [400, 360, 320, 280, 240, 205, 175, 145, 115, 85, 70, 58, 48, 40, 34, 29, 25, 19, 14, 10];
-    let tempoEspera = mapaTempos[Math.min(20, Math.max(1, velocidade)) - 1];
+    const velIndex = Math.min(19, Math.max(0, parseInt(velocidade) - 1));
+    let tempoEspera = mapaTempos[velIndex] || 100;
 
-    // A MÁGICA FÍSICA: Se as cifras estão ocultas, o trajeto cai pela metade.
-    // Logo, dobramos o tempo de espera para manter a mesma duração de show.
     const container = document.getElementById("setlist-container");
     if (container && container.classList.contains("ocultar-acordes")) {
-        tempoEspera = tempoEspera * 2;
+        tempoEspera *= 2;
     }
 
-    intervaloRolagem = setInterval(() => window.scrollBy(0, 1), tempoEspera);
+    intervaloRolagem = setInterval(() => {
+        window.scrollBy(0, 1);
+    }, tempoEspera);
 }
 
 
