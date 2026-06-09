@@ -1074,35 +1074,82 @@ function verificarMusicaVisivelNaTela() {
 
 function toggleRolagemGeral() {
     const btn = document.getElementById("btn-scroll");
+    const paineisPalco = document.querySelectorAll('.sub-control-panel');
+    const placar = document.getElementById('placar-rolagem');
+    const barra = document.getElementById('barra-progresso-musica');
+
     if (intervaloRolagem || intervaloContagem) {
-        // Pausar
+        // --- PAUSAR ROLAGEM / CANCELAR CONTAGEM ---
+        if (intervaloContagem) {
+            clearInterval(intervaloContagem);
+            intervaloContagem = null;
+            const overlay = document.getElementById('overlay-contagem');
+            if (overlay) overlay.style.display = 'none';
+        }
+
         clearInterval(intervaloRolagem);
         intervaloRolagem = null;
-        clearInterval(intervaloContagem);
-        intervaloContagem = null;
+        pararMetronomo();
+
         btn.innerText = "▶";
         btn.classList.remove("active");
+
+        // REAPARECER PAINÉIS DE CONFIGURAÇÃO
+        paineisPalco.forEach(p => p.style.display = 'flex');
+
         document.body.classList.remove('rolagem-ativa');
-        document.getElementById('placar-rolagem').style.display = 'none';
+        toggleTelaCheia(false);
+
+        if (placar) placar.style.display = 'none';
+        if (barra) {
+            barra.style.display = 'none';
+            barra.style.width = '0%';
+        }
     } else {
-        // Iniciar
+        // --- INICIAR ROLAGEM ---
         btn.innerText = "■";
         btn.classList.add("active");
 
+        // OCULTAR PAINÉIS DE CONFIGURAÇÃO MANUALMENTE
+        paineisPalco.forEach(p => p.style.display = 'none');
+
+        toggleTelaCheia(true);
+        document.body.classList.add('rolagem-ativa');
+
+        if (placar) placar.style.display = 'block';
+        if (barra) barra.style.display = 'block';
+
         const blocoFocado = obterBlocoMusicaAtualNaTela();
-        if (blocoFocado) {
-            const rect = blocoFocado.getBoundingClientRect();
-            // CORREÇÃO: scroll instantâneo para evitar conflito com a rolagem automática
-            window.scrollTo({
-                top: window.scrollY + rect.top - (window.innerHeight * 0.15),
-                behavior: 'instant'
-            });
-        }
 
         setTimeout(() => {
-            redefinirMotorRolagem(velocidadGlobalAtual);
-            document.body.classList.add('rolagem-ativa');
-            document.getElementById('placar-rolagem').style.display = 'block';
+            if (blocoFocado) {
+                // Scroll instantâneo para evitar conflito com a rolagem automática
+                const rect = blocoFocado.getBoundingClientRect();
+                window.scrollTo({
+                    top: window.scrollY + rect.top - (window.innerHeight * 0.15),
+                    behavior: 'instant'
+                });
+            }
+
+            const delay = (appStorage.configGlobais && appStorage.configGlobais.delayPartida) ? appStorage.configGlobais.delayPartida : 0;
+
+            if (delay > 0) {
+                iniciarContagemRegressiva(delay, () => {
+                    velocidadGlobalAtual = -1;
+                    bpmAtual = -1;
+                    verificarMetronomo();
+                    verificarMusicaVisivelNaTela();
+                    if (blocoFocado) atualizarContadorMusica(blocoFocado);
+                    redefinirMotorRolagem(velocidadGlobalAtual);
+                });
+            } else {
+                velocidadGlobalAtual = -1;
+                bpmAtual = -1;
+                verificarMetronomo();
+                verificarMusicaVisivelNaTela();
+                if (blocoFocado) atualizarContadorMusica(blocoFocado);
+                redefinirMotorRolagem(velocidadGlobalAtual);
+            }
         }, 300);
     }
 }
