@@ -962,7 +962,7 @@ kbd {
 .placar-rolagem {
     position: fixed;
     top: 6px;
-    right: 70px;
+    right: 15px;
     background: rgba(15, 23, 42, 0.75);
     color: white;
     font-size: 11px;
