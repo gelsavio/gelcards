@@ -749,15 +749,8 @@ function navegarEntreMusicas(direcao) {
     const idxAtual = blocosVisiveis.indexOf(blocoAtual);
     const proximoIdx = idxAtual + direcao;
 
-    // --- CORREÇÃO AQUI: Se for o primeiro e clicarmos em anterior, volta ao topo do primeiro ---
-    if (idxAtual === 0 && direcao === -1) {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        mostrarToast("⏮ Topo da música");
-        return;
-    }
-
     if (proximoIdx < 0) {
-        mostrarToast("⏮ Início da lista");
+        mostrarToast("⏮ Primeira música");
         return;
     }
     if (proximoIdx >= blocosVisiveis.length) {
@@ -766,7 +759,12 @@ function navegarEntreMusicas(direcao) {
     }
 
     const blocoAlvo = blocosVisiveis[proximoIdx];
-    if (!blocoAlvo.id) blocoAlvo.id = 'busca-alvo-' + Date.now();
+
+    // Se for um bloco temporário de busca global, injetamos um ID de passagem
+    if (!blocoAlvo.id) {
+        blocoAlvo.id = 'busca-alvo-' + Date.now();
+    }
+
     pularParaMusica(blocoAlvo.id);
 }
 
