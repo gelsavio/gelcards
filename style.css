@@ -56,6 +56,8 @@ body {
     flex-direction: column;
     min-height: 100vh;
     transition: background 0.3s ease, color 0.3s ease;
+    padding-top: 100px;
+    /* Ajuste este valor até que o título da música apareça sem ser cortado */
 }
 
 .app-header {
@@ -69,25 +71,31 @@ body {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     z-index: 1000;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    /* Organiza o conteúdo em coluna para caber tudo */
+    align-items: center;
+    /* Centraliza os itens horizontalmente */
+    gap: 5px;
+    /* Espaçamento entre o título e os seletores */
 }
 
 .header-content {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    /* Empilha os itens verticalmente */
     width: 100%;
     max-width: 800px;
-    display: flex;
-    justify-content: space-between;
-    align-items: left;
-    flex-wrap: wrap;
+    gap: 5px;
+    align-items: stretch;
+    /* Faz os filhos (seletores/busca) ocuparem a largura total */
 }
 
 .brand-wrapper {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    flex: 1 1 100%;
+    /* Força o logo e título a ocuparem a largura total da linha superior */
 }
 
 .header-logo {
@@ -104,6 +112,12 @@ body {
     font-weight: 800;
     letter-spacing: -0.5px;
     line-height: 1.1;
+}
+
+.brand-box h2 {
+    font-size: 15px;
+    /* Título levemente menor */
+    margin: 0;
 }
 
 .brand-box p {
@@ -124,7 +138,7 @@ body {
 .selectors-group {
     display: flex;
     gap: 5px;
-    flex: 1;
+    /* Removido o flex: 1 para ele não tentar crescer e empurrar o logo */
     justify-content: flex-end;
     min-width: 260px;
     align-items: center;
@@ -144,7 +158,8 @@ select {
     font-weight: bold;
     cursor: pointer;
     flex: 1;
-    max-width: 150px;
+    max-width: 100%;
+    width: 100%;
 }
 
 select option {

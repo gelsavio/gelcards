@@ -1,5 +1,5 @@
 // ATENÇÃO: Toda vez que você atualizar o app, mude este número (ex: v2, v3, v4)
-const CACHE_NAME = 'gelcifras-cache-v37';
+const CACHE_NAME = 'gelcifras-cache-v38';
 
 const ASSETS_TO_CACHE = [
     '/',
