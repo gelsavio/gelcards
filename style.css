@@ -1058,10 +1058,12 @@ kbd {
     gap: 8px;
     justify-content: center;
     position: fixed;
-    top: 10px;
-    left: 10px;
+    /* Ajustado para ficar abaixo do topo e alinhado à direita */
+    top: 30px;
+    /* Ajuste este valor se ficar muito colado no placar */
+    right: 15px;
+    /* 'left' foi trocado por 'right' para alinhar à direita */
     z-index: 9999;
-    /* REMOVIDO: background, backdrop-filter, padding e border-radius */
     background: transparent;
     pointer-events: none;
 }
