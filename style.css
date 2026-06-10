@@ -1051,32 +1051,46 @@ kbd {
 }
 
 
-/* ── METRÔNOMO VISUAL (BPM) ──────────────────────────────────────── */
+/* ── METRÔNOMO VISUAL DE 4 LUZES (FLUTUANTE SEM FUNDO) ────────────── */
 
-.visual-metronome {
+.metronome-container {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
     position: fixed;
-    top: 15px;
-    left: 15px;
+    top: 10px;
+    left: 10px;
+    z-index: 9999;
+    /* REMOVIDO: background, backdrop-filter, padding e border-radius */
+    background: transparent;
+    pointer-events: none;
+}
+
+.metronome-light {
     width: 18px;
     height: 18px;
     border-radius: 50%;
-    background-color: #ef4444;
-    /* Vermelho vivo padrão */
-    z-index: 1002;
-    opacity: 0;
-    pointer-events: none;
-    box-shadow: 0 0 12px #ef4444;
-    transition: transform 0.1s ease-out, opacity 0.15s ease-out;
-    display: none;
-    /* Invisível por padrão */
+    background: transparent;
+    border: 2px solid #555;
+    /* Borda cinza suave para indicar a posição */
+    transition: background 0.1s;
 }
 
 
-/* A classe que o JavaScript vai injetar para dar a "batida" */
+/* Quando acender, apenas muda a cor do fundo do círculo */
 
-.visual-metronome.beat {
-    opacity: 1;
-    transform: scale(1.4);
+#light-1.active,
+#light-3.active {
+    background: #ef4444;
+    /* Vermelho */
+    border-color: #ef4444;
+}
+
+#light-2.active,
+#light-4.active {
+    background: #10b981;
+    /* Verde */
+    border-color: #10b981;
 }
 
 

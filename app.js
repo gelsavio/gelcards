@@ -2404,27 +2404,33 @@ function mudarBpmIndividual(indexMusica, delta) {
     if (intervaloRolagem) verificarMetronomo();
 }
 
+let contadorBatida = 0;
+
 function iniciarMetronomo(bpm) {
-    const dot = document.getElementById('visual-metronome');
-    if (!dot) return;
+    const container = document.getElementById('visual-metronome');
+    if (!container) return;
 
     if (intervaloMetronomo) clearInterval(intervaloMetronomo);
 
     if (bpm <= 0) {
-        dot.style.display = 'none';
+        container.style.display = 'none';
         return;
     }
 
-    // A mágica matemática: 60 milissegundos divididos pelo BPM
+    container.style.display = 'flex';
     const msPorBatida = 60000 / bpm;
-    dot.style.display = 'block';
+    contadorBatida = 0;
 
     intervaloMetronomo = setInterval(() => {
-        dot.classList.add('beat'); // Dá o "soco" visual
+        // Remove a classe 'active' de todas
+        document.querySelectorAll('.metronome-light').forEach(l => l.classList.remove('active'));
         
-        setTimeout(() => {
-            dot.classList.remove('beat'); // Apaga rapidamente
-        }, 120); // Duração do "flash"
+        // Incrementa o contador de 1 a 4
+        contadorBatida = (contadorBatida % 4) + 1;
+        
+        // Acende a luz atual
+        const luzAtiva = document.getElementById(`light-${contadorBatida}`);
+        if (luzAtiva) luzAtiva.classList.add('active');
         
     }, msPorBatida);
 }

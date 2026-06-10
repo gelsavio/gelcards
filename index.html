@@ -41,11 +41,17 @@
     </header>
 
     <div id="placar-rolagem" class="placar-rolagem" style="display:none;"></div>
-    <div id="visual-metronome" class="visual-metronome"></div>
+
+    <div id="visual-metronome" class="metronome-container" style="display:none;">
+        <div class="metronome-light" id="light-1"></div>
+        <div class="metronome-light" id="light-2"></div>
+        <div class="metronome-light" id="light-3"></div>
+        <div class="metronome-light" id="light-4"></div>
+    </div>
+
     <div id="overlay-contagem" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); font-size:120px; font-weight:900; color:var(--chord-color); z-index:9999; text-shadow: 0 4px 15px rgba(0,0,0,0.4); pointer-events: none;"></div>
 
     <div class="container">
-        <!-- A barra de busca saiu daqui de dentro -->
         <div id="setlist-container"></div>
     </div>
 
@@ -53,7 +59,6 @@
     <div class="floating-action-rack">
         <button class="btn-vel-rapida" onclick="ajustarVelocidadeAtiva(1)" title="Aumentar velocidade">+</button>
         <button class="btn-vel-rapida" onclick="ajustarVelocidadeAtiva(-1)" title="Diminuir velocidade">−</button>
-        <!-- NOVO: Acesso direto à inserção de música -->
         <button class="btn-float btn-novo" onclick="abrirModalCadastrarMusica()" title="Nova Música">➕</button>
         <button class="btn-float btn-busca" onclick="toggleBusca(); fecharMenuFlutuante();" title="Buscar Música">🔍</button>
         <button class="btn-float btn-menu" onclick="toggleMenuFlutuante()" title="Menu">☰</button>
