@@ -86,6 +86,14 @@ body {
     font-weight: bold;
 }
 
+#app-version-badge,
+#badge-tempo-show {
+    white-space: nowrap;
+    /* Impede que o texto quebre em duas linhas */
+    display: inline-flex;
+    align-items: center;
+}
+
 .header-content {
     display: flex;
     flex-direction: column;
