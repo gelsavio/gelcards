@@ -39,9 +39,6 @@ window.addEventListener('load', () => {
     window.addEventListener('scroll', () => {
         if (intervaloRolagem && !travaTemporariaScroll) verificarMusicaVisivelNaTela();
     });
-
-    // Verificar se veio de um compartilhamento Android
-    processarArquivoCompartilhado();
 });
 
 function obterListasOrdenadasChaves() {
@@ -752,8 +749,15 @@ function navegarEntreMusicas(direcao) {
     const idxAtual = blocosVisiveis.indexOf(blocoAtual);
     const proximoIdx = idxAtual + direcao;
 
+    // --- CORREÇÃO AQUI: Se for o primeiro e clicarmos em anterior, volta ao topo do primeiro ---
+    if (idxAtual === 0 && direcao === -1) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        mostrarToast("⏮ Topo da música");
+        return;
+    }
+
     if (proximoIdx < 0) {
-        mostrarToast("⏮ Primeira música");
+        mostrarToast("⏮ Início da lista");
         return;
     }
     if (proximoIdx >= blocosVisiveis.length) {
@@ -762,12 +766,7 @@ function navegarEntreMusicas(direcao) {
     }
 
     const blocoAlvo = blocosVisiveis[proximoIdx];
-
-    // Se for um bloco temporário de busca global, injetamos um ID de passagem
-    if (!blocoAlvo.id) {
-        blocoAlvo.id = 'busca-alvo-' + Date.now();
-    }
-
+    if (!blocoAlvo.id) blocoAlvo.id = 'busca-alvo-' + Date.now();
     pularParaMusica(blocoAlvo.id);
 }
 
@@ -2306,62 +2305,43 @@ abrirModalAdmin = function() {
 };
 
 // ── INTEGRAÇÃO COM COMPARTILHAMENTO DO ANDROID (SHARE TARGET API) ──────────
-// Executado dentro do load principal do app (ver início do arquivo)
-async function processarArquivoCompartilhado() {
+
+window.addEventListener('load', async () => {
     const urlParams = new URLSearchParams(window.location.search);
-    if (!urlParams.has('shared')) return;
-
-    // Limpar URL imediatamente para evitar reprocessamento ao recarregar
-    window.history.replaceState({}, document.title, window.location.pathname);
-
-    try {
-        // Varrer todos os caches disponíveis — não depende do nome hardcoded
-        const nomesCaches = await caches.keys();
-        let conteudoTexto = null;
-
-        for (const nomecache of nomesCaches) {
-            const cache = await caches.open(nomecache);
-            const response = await cache.match('/shared-file.txt');
-            if (response) {
-                conteudoTexto = await response.text();
-                await cache.delete('/shared-file.txt');
-                break;
-            }
-        }
-
-        if (!conteudoTexto || !conteudoTexto.trim()) {
-            mostrarToast('⚠️ Arquivo compartilhado vazio ou não encontrado.');
-            return;
-        }
-
-        // Tentar como backup JSON primeiro
+    
+    // Se a URL tiver ?shared=1, significa que o Android acabou de compartilhar um arquivo
+    if (urlParams.has('shared')) {
         try {
-            const pacote = JSON.parse(conteudoTexto);
-            if (pacote.musicasGlobais && pacote.listas) {
-                backupTemporarioParaProcessar = pacote;
-                const h3 = document.querySelector('#modal-interacao-restore .modal-header h3');
-                if (h3) h3.textContent = '📥 Importar arquivo compartilhado';
-                document.getElementById('modal-interacao-restore').classList.add('active');
-                mostrarToast('📂 Repertório recebido — escolha como importar');
-                return;
-            }
-        } catch (e) { /* não é JSON — tratar como cifra */ }
+            const cache = await caches.open('gelcifras-cache-v311');
+            const response = await cache.match('/shared-file.txt');
 
-        // É uma cifra em texto — abrir modal de cadastro
-        abrirModalCadastrarMusica();
-        setTimeout(() => {
-            const campo = document.getElementById('input-cifra-bruta');
-            if (campo) {
-                campo.value = conteudoTexto;
-                mostrarToast('🎵 Cifra recebida — revise e salve');
+            if (response) {
+                const conteudoTexto = await response.text();
+                
+                const campoImportacao = document.getElementById('input-cifra-bruta');
+                if (campoImportacao) {
+                    campoImportacao.value = conteudoTexto;
+                    
+                    if (typeof abrirModalCadastrarMusica === 'function') {
+                        abrirModalCadastrarMusica();
+                    }
+                    if (typeof mostrarToast !== 'undefined') {
+                        mostrarToast("Cifra recebida! Processe para salvar.");
+                    }
+                }
+                
+                // Limpa o arquivo da memória
+                await cache.delete('/shared-file.txt');
             }
-        }, 350);
-
-    } catch (err) {
-        console.error('Erro ao ler arquivo compartilhado:', err);
-        mostrarToast('❌ Erro ao processar arquivo compartilhado.');
+        } catch (err) {
+            console.error("Erro ao ler arquivo compartilhado:", err);
+            alert("Não foi possível carregar o arquivo.");
+        }
+        
+        // Limpa a barra de endereços para não repetir a importação se atualizar a página
+        window.history.replaceState({}, document.title, window.location.pathname);
     }
-}
+});
 
 // =========================================================================
 // PAUSAR ROLAGEM AO CLICAR NA TELA (MECÂNICA DE PALCO)

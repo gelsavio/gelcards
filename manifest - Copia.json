@@ -2,7 +2,6 @@
     "short_name": "GelCifras",
     "name": "GelCifras - Gerenciador de Cifras",
     "version": "3.11",
-
     "icons": [{
         "src": "apple-touch-icon.png",
         "type": "image/png",
@@ -21,10 +20,7 @@
             "text": "text",
             "files": [{
                 "name": "file",
-                "accept": [
-                    "text/plain",
-                    ".txt"
-                ]
+                "accept": ["text/plain", ".txt"]
             }]
         }
     }
