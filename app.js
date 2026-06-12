@@ -1222,19 +1222,22 @@ function envolverAcordesEmSpans(linha) {
 function processarLinhasTexto(texto) {
     return texto.split('\n').map(linha => {
         const lim = linha.trim();
-
-        // CORREÇÃO: Cria uma linha invisível para manter o espaço do parágrafo
         if (!lim) return `<div style="height: 1em;"></div>`;
+
+        // 1. Aplica a transformação de negrito ANTES de qualquer outra lógica
+        let linhaFormatada = lim.replace(/\*(.*?)\*/g, "<strong>$1</strong>");
 
         const temMarcadores = lim.includes('[') || lim.includes('(');
         const totalEspacos = (linha.match(/ /g) || []).length;
-        const ehEspacada = totalEspacos > lim.length * 0.25;
+        const ehEspacada = totalEspacos > linha.length * 0.25;
         const ehLinhaDeAcordes = REGEX_LINHA_ACORDES.test(lim);
 
         if (temMarcadores || ehEspacada || ehLinhaDeAcordes) {
-            return `<div class="chord-line">${envolverAcordesEmSpans(linha)}</div>`;
+            // 2. Envolve a linha formatada (que já contém o <strong>) nos spans de acordes
+            return `<div class="chord-line">${envolverAcordesEmSpans(linhaFormatada)}</div>`;
         }
-        return `<div>${linha}</div>`;
+        // 3. Linhas de texto comum recebem o negrito aqui
+        return `<div>${linhaFormatada}</div>`;
     }).join('');
 }
 
@@ -2607,4 +2610,10 @@ function calcularTempoTotalShow() {
 
     badgeTempo.innerText = `⏱️ ~${textoTempo}`;
     badgeTempo.style.display = 'inline-block';
+}
+
+function processarNegrito(texto) {
+    // Substitui *texto* por <strong>texto</strong>
+    // A expressão regular /\*(.*?)\*/g procura por tudo entre asteriscos
+    return texto.replace(/\*(.*?)\*/g, "<strong>$1</strong>");
 }

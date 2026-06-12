@@ -1143,3 +1143,8 @@ body.busca-ativa .container {
     padding-top: 155px;
     transition: padding-top 0.2s ease;
 }
+
+strong {
+    font-weight: 800;
+    /* Força o negrito mesmo se o font-family do 'pre' for Courier */
+}
