@@ -124,7 +124,8 @@ function gerarHtmlCardMusica(musica, idControle, idRealBanco, isBuscaGlobal = fa
                     <button class="btn-action-card" onclick="abrirPainelVinculacaoLista('${idRealBanco}', '${idControle}')" title="Listas">📋</button>
                     <button class="btn-action-card" style="border-color: var(--chord-color);" onclick="abrirModalEditarCifra('${idRealBanco}')" title="Editar">✏️</button>
                     <button class="btn-action-card" style="border-color:#f87171;" onclick="excluirMusicaGeral('${idRealBanco}')" title="Excluir">🗑️</button>
-                </div>
+                    <button class="btn-action-card" onclick="abrirModalOrdenacao('${appStorage.listaAtiva}')"         title="Reordenar lista atual">    ↕️</button>
+                    </div>
             </div>
         </div>
 
@@ -274,7 +275,7 @@ function abrirPainelVinculacaoLista(idMusica, indexVisual) {
         if (nomeLista === "Todas as Músicas") {
             label.innerHTML = `<input type="checkbox" checked disabled> <span style="color:var(--text-muted);">${escapeHtml(nomeLista)}</span>`;
         } else {
-            const pertence = appStorage.listas[nomeLista].includes(idMusica);
+            const pertence = (appStorage.listas[nomeLista] || []).includes(idMusica);
             label.innerHTML = `<input type="checkbox" ${pertence ? 'checked' : ''} onchange="atualizarVinculoCheckbox('${idMusica}', '${nomeLista}', this.checked)"> ${escapeHtml(nomeLista)}`;
         }
         grid.appendChild(label);
@@ -284,6 +285,7 @@ function abrirPainelVinculacaoLista(idMusica, indexVisual) {
 
 function atualizarVinculoCheckbox(idMusica, nomeLista, estadoMarcado) {
     const lista = appStorage.listas[nomeLista];
+    if (!lista) return;
     const idx = lista.indexOf(idMusica);
     if (estadoMarcado && idx === -1) lista.push(idMusica);
     else if (!estadoMarcado && idx !== -1) lista.splice(idx, 1);
@@ -365,55 +367,160 @@ function fecharModalTutorial() {
 function fecharModalTutorialExterno(e) {
     if (e.target.id === "modal-tutorial-container") fecharModalTutorial();
 }
+// =========================================================================
+// MODAL DE ORDENAÇÃO 
+// =========================================================================
+function abrirModalOrdenacao(nomeLista) {
+    if (!nomeLista) {
+        mostrarToast("Erro: Lista não encontrada.");
+        return;
+    }
+
+    // Procura o elemento ATIVAMENTE no momento do clique (não usa cache)
+    const modal = document.getElementById('modal-ordenar-container');
+
+    if (!modal) {
+        console.error("Modal não encontrado no DOM. Verifique se o ID no HTML é exatamente 'modal-ordenar-container'");
+        alert("Erro: O painel de ordenação não foi carregado corretamente. Tente atualizar a página (F5).");
+        return;
+    }
+
+    // Força a exibição
+    modal.classList.add('active');
+
+    // Tenta encontrar o título e o container
+    const titulo = document.getElementById('titulo-ordem-lista');
+    if (titulo) titulo.innerText = nomeLista;
+
+    // Garante que o container existe antes de renderizar
+    const container = document.getElementById('container-lista-ordenacao-novo');
+    if (container) {
+        renderizarPainelOrdenacao(nomeLista, 'container-lista-ordenacao-novo');
+    } else {
+        console.error("Container de renderização não encontrado!");
+        alert("Erro: Container de lista não encontrado.");
+    }
+}
+
+function salvarNovaOrdem(nomeLista) {
+    const itens = document.querySelectorAll('#container-lista-ordenacao .order-item-row');
+    const novaOrdem = Array.from(itens).map(it => it.dataset.id);
+
+    appStorage.listas[nomeLista] = novaOrdem;
+    localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
+
+    // Atualiza a interface principal e o índice do modal
+    sincronizarEAAplicarInterface();
+    // Re-renderiza o modal para atualizar os números de 1 a N
+    abrirModalOrdenacao(nomeLista);
+}
+
+function fecharModalOrdenacao() {
+    document.getElementById('modal-ordenar-container').classList.remove('active');
+}
+
+// --- Limpeza: Remova qualquer código de "hack" antigo no fim do arquivo ---
+// Mantenha apenas estas funções de suporte para o Modal Admin:
 
 function abrirModalAdmin() {
     const inputDelay = document.getElementById("input-delay-partida");
     if (inputDelay) inputDelay.value = appStorage.configGlobais.delayPartida || 0;
+
+    // Abre o modal de Admin
     document.getElementById("modal-admin-container").classList.add("active");
+
+    // Atualiza o texto do backup com o nome da lista ativa
     const lblLista = document.getElementById("txt-nome-lista-backup");
     if (lblLista) lblLista.innerText = `"${appStorage.listaAtiva}"`;
-    const seletorOrdem = document.getElementById("seletor-lista-ordem");
-    seletorOrdem.innerHTML = "";
 
-    const chavesOrdenadas = obterListasOrdenadasChaves();
-    chavesOrdenadas.forEach(nomeLista => {
-        let opt = document.createElement("option");
-        opt.value = nomeLista;
-        opt.text = nomeLista;
-        if (nomeLista === appStorage.listaAtiva) opt.selected = true;
-        seletorOrdem.appendChild(opt);
-    });
-    renderizarPainelOrdenacao(seletorOrdem.value);
+    // Apenas popula o seletor de gerenciamento (Excluir/Renomear/Duplicar)
+    // A lógica de ordenação antiga foi removida daqui para evitar erros
+    popularSeletorGerenciarListas();
 }
 
-function renderizarPainelOrdenacao(nomeLista) {
-    const containerOrdem = document.getElementById("container-lista-ordenacao");
+function popularSeletorGerenciarListas() {
+    const sel = document.getElementById('seletor-lista-gerenciar');
+    if (!sel) {
+        console.error("ERRO: O elemento com ID 'seletor-lista-gerenciar' não foi encontrado no seu HTML!");
+        return;
+    }
+
+    // Limpa o select
+    sel.innerHTML = '';
+    console.log("Iniciando preenchimento do select de listas...");
+
+    // Pega as listas
+    const chaves = obterListasOrdenadasChaves();
+    const listasParaGerir = chaves.filter(c => c !== 'Todas as Músicas');
+
+    if (listasParaGerir.length === 0) {
+        console.warn("Aviso: Nenhuma lista encontrada (além da padrão).");
+        sel.innerHTML = '<option value="">Nenhuma lista criada</option>';
+        return;
+    }
+
+    listasParaGerir.forEach(nome => {
+        console.log("Adicionando lista ao select:", nome);
+        const opt = document.createElement('option');
+        opt.value = nome;
+        opt.text = nome;
+        if (nome === appStorage.listaAtiva) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+
+// Altere a função renderizarPainelOrdenacao para aceitar o ID do container
+function renderizarPainelOrdenacao(nomeLista, containerId = "container-lista-ordenacao") {
+    const containerOrdem = document.getElementById(containerId);
+    if (!containerOrdem) return;
+
     containerOrdem.innerHTML = "";
     const ids = appStorage.listas[nomeLista] || [];
+
     if (ids.length === 0) {
         containerOrdem.innerHTML = "<div style='font-size:12px;text-align:center;color:var(--text-muted);padding:10px;'>Nenhuma música nesta lista.</div>";
         return;
     }
+
     ids.forEach((id, idx) => {
         const musica = appStorage.musicasGlobais[id];
         if (!musica) return;
         const row = document.createElement("div");
         row.className = "order-item-row";
-        row.innerHTML = `<span>${idx + 1}. ${escapeHtml(musica.titulo)}</span><div class="order-btn-group"><button class="btn-order-arrow" onclick="moverMusicaNaLista('${nomeLista}', ${idx}, -1)" ${idx === 0 ? 'disabled style="opacity:0.3;"' : ''}>🔼</button><button class="btn-order-arrow" onclick="moverMusicaNaLista('${nomeLista}', ${idx}, 1)" ${idx === ids.length - 1 ? 'disabled style="opacity:0.3;"' : ''}>🔽</button></div>`;
+        // Dentro da função renderizarPainelOrdenacao, o botão deve estar assim:
+        row.innerHTML = `
+            <span>${idx + 1}. ${escapeHtml(musica.titulo)}</span>
+            <div class="order-btn-group">
+                <button class="btn-order-arrow" 
+                    onclick="moverMusicaNaLista('${nomeLista}', ${idx}, -1, '${containerId}')" 
+                    ${idx === 0 ? 'disabled' : ''}>🔼</button>
+                <button class="btn-order-arrow" 
+                    onclick="moverMusicaNaLista('${nomeLista}', ${idx}, 1, '${containerId}')" 
+                    ${idx === ids.length - 1 ? 'disabled' : ''}>🔽</button>
+            </div>
+            `;
         containerOrdem.appendChild(row);
     });
 }
 
-function moverMusicaNaLista(nomeLista, indexOrigem, direcao) {
-    const Math_swap = appStorage.listas[nomeLista];
+function moverMusicaNaLista(nomeLista, indexOrigem, direcao, containerId) {
+    const idsLista = appStorage.listas[nomeLista];
     const indexDestino = indexOrigem + direcao;
-    if (indexDestino >= 0 && indexDestino < Math_swap.length) {
-        const temp = Math_swap[indexOrigem];
-        Math_swap[indexOrigem] = Math_swap[indexDestino];
-        Math_swap[indexDestino] = temp;
+
+    if (indexDestino >= 0 && indexDestino < idsLista.length) {
+        // Troca a posição no array
+        const temp = idsLista[indexOrigem];
+        idsLista[indexOrigem] = idsLista[indexDestino];
+        idsLista[indexDestino] = temp;
+
+        // Salva
         localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
-        renderizarPainelOrdenacao(nomeLista);
+
+        // Atualiza a tela principal
         sincronizarEAAplicarInterface();
+
+        // Atualiza o modal de reordenação (passando o ID correto para ele se redesenhar)
+        renderizarPainelOrdenacao(nomeLista, containerId);
     }
 }
 
@@ -510,7 +617,9 @@ function processarESalvarNovaMusica() {
     };
     appStorage.musicasGlobais[novoId] = objetoMusica;
     appStorage.listas["Todas as Músicas"].push(novoId);
-    if (appStorage.listaAtiva !== "Todas as Músicas") appStorage.listas[appStorage.listaAtiva].push(novoId);
+    if (appStorage.listaAtiva !== "Todas as Músicas" && appStorage.listas[appStorage.listaAtiva]) {
+        appStorage.listas[appStorage.listaAtiva].push(novoId);
+    }
     localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
     fecharModalCadastrar();
     mostrarToast("✓ Cifra cadastrada!");
@@ -773,6 +882,7 @@ function navegarEntreMusicas(direcao) {
 
 function mudarFonteIndividual(indexMusica, delta) {
     const bloco = document.getElementById(`musica-bloco-${indexMusica}`);
+    if (!bloco) return;
     const idReal = bloco.getAttribute('data-real-id');
     const inputFonte = document.getElementById(`fonte-musica-${indexMusica}`);
 
@@ -789,6 +899,7 @@ function mudarFonteIndividual(indexMusica, delta) {
 
 function mudarVelocidadeIndividual(indexMusica, delta) {
     const bloco = document.getElementById(`musica-bloco-${indexMusica}`);
+    if (!bloco) return;
     const idReal = bloco.getAttribute('data-real-id');
     const input = document.getElementById(`vel-musica-${indexMusica}`);
 
@@ -807,6 +918,7 @@ function mudarVelocidadeIndividual(indexMusica, delta) {
 
 function mudarTomIndividual(indexMusica, semitons) {
     const bloco = document.getElementById(`musica-bloco-${indexMusica}`);
+    if (!bloco) return;
     const idReal = bloco.getAttribute('data-real-id');
 
     // 1. Ignoramos o índice quebrado e pegamos o texto real da tela
@@ -855,6 +967,7 @@ function mudarTomIndividual(indexMusica, semitons) {
 
 function resetarTomOriginalFabrica(indexMusica, tomOriginalFabrica) {
     const bloco = document.getElementById(`musica-bloco-${indexMusica}`);
+    if (!bloco) return;
     const idReal = bloco.getAttribute('data-real-id');
     const idxAtual = parseInt(bloco.getAttribute('data-tom-index'));
 
@@ -905,6 +1018,7 @@ function resetarTomOriginalFabrica(indexMusica, tomOriginalFabrica) {
 
 function resetarCapoOriginal(indexMusica, capoOriginal) {
     const bloco = document.getElementById(`musica-bloco-${indexMusica}`);
+    if (!bloco) return;
     const idReal = bloco.getAttribute('data-real-id');
     const input = document.getElementById(`capo-select-${indexMusica}`);
     const txt = document.getElementById(`capo-txt-${indexMusica}`);
@@ -973,6 +1087,7 @@ function exibirDicaCapo(indexMusica, idxTomAtualBase, casaCapo) {
 
 function mudarCapoIndividual(indexMusica, delta) {
     const bloco = document.getElementById(`musica-bloco-${indexMusica}`);
+    if (!bloco) return;
     const idReal = bloco.getAttribute('data-real-id');
     const idxTomAtual = parseInt(bloco.getAttribute('data-tom-index'));
     const input = document.getElementById(`capo-select-${indexMusica}`);
@@ -2023,23 +2138,7 @@ function toggleTelaCheia(forcar) {
 // =========================================================================
 // GERENCIAR LISTAS (EXCLUIR / DUPLICAR)
 // =========================================================================
-function popularSeletorGerenciarListas() {
-    const sel = document.getElementById('seletor-lista-gerenciar');
-    if (!sel) return;
-    sel.innerHTML = '';
-    const chaves = obterListasOrdenadasChaves().filter(c => c !== 'Todas as Músicas');
-    if (chaves.length === 0) {
-        sel.innerHTML = '<option value="">Nenhuma lista criada</option>';
-        return;
-    }
-    chaves.forEach(nome => {
-        const opt = document.createElement('option');
-        opt.value = nome;
-        opt.text = nome;
-        if (nome === appStorage.listaAtiva) opt.selected = true;
-        sel.appendChild(opt);
-    });
-}
+
 
 function excluirLista() {
     const sel = document.getElementById('seletor-lista-gerenciar');
@@ -2141,92 +2240,6 @@ function confirmarAcaoPromptLista() {
     sincronizarEAAplicarInterface();
 }
 
-// ── GESTÃO AVANÇADA DE LISTAS (MODAL CUSTOMIZADA) ─────────────────────
-
-function fecharModalPromptLista() {
-    document.getElementById('modal-prompt-lista').classList.remove('active');
-    document.getElementById('modal-prompt-input').value = '';
-}
-
-function duplicarLista() {
-    const sel = document.getElementById('seletor-lista-gerenciar');
-    const nomeOriginal = sel?.value;
-    
-    if (!nomeOriginal) { 
-        mostrarToast('Nenhuma lista selecionada.'); 
-        return; 
-    }
-
-    document.getElementById('modal-prompt-titulo').innerText = `Duplicar: ${nomeOriginal}`;
-    document.getElementById('modal-prompt-input').value = `${nomeOriginal} (cópia)`;
-    document.getElementById('modal-prompt-acao').value = 'duplicar';
-    document.getElementById('modal-prompt-lista').classList.add('active');
-    
-    setTimeout(() => document.getElementById('modal-prompt-input').select(), 100);
-}
-
-function abrirModalRenomearLista() {
-    const sel = document.getElementById('seletor-lista-gerenciar');
-    const nomeOriginal = sel?.value;
-    
-    if (!nomeOriginal) { 
-        mostrarToast('Nenhuma lista selecionada.'); 
-        return; 
-    }
-
-    document.getElementById('modal-prompt-titulo').innerText = `Renomear: ${nomeOriginal}`;
-    document.getElementById('modal-prompt-input').value = nomeOriginal;
-    document.getElementById('modal-prompt-acao').value = 'renomear';
-    document.getElementById('modal-prompt-lista').classList.add('active');
-    
-    setTimeout(() => document.getElementById('modal-prompt-input').select(), 100);
-}
-
-function confirmarAcaoPromptLista() {
-    const acao = document.getElementById('modal-prompt-acao').value;
-    const novoNome = document.getElementById('modal-prompt-input').value.trim();
-    const sel = document.getElementById('seletor-lista-gerenciar');
-    const nomeOriginal = sel?.value;
-
-    if (!novoNome) {
-        alert('O nome da lista não pode ficar vazio.');
-        return;
-    }
-
-    if (novoNome === nomeOriginal) {
-        fecharModalPromptLista();
-        return;
-    }
-
-    // Validação de existência de nome duplicado
-    if (appStorage.listas[novoNome]) {
-        alert(`Já existe uma lista chamada "${novoNome}". Escolha outro nome.`);
-        return;
-    }
-
-    if (acao === 'duplicar') {
-        // Clona o array de caminhos/IDs para a nova chave
-        appStorage.listas[novoNome] = [...appStorage.listas[nomeOriginal]];
-        appStorage.listaAtiva = novoNome;
-        mostrarToast(`Lista "${novoNome}" criada!`);
-    } 
-    else if (acao === 'renomear') {
-        // Transfere o conteúdo para a nova chave e remove a antiga
-        appStorage.listas[novoNome] = appStorage.listas[nomeOriginal];
-        delete appStorage.listas[nomeOriginal];
-        
-        // Atualiza o estado se a lista modificada for a que está ativa no ecrã
-        if (appStorage.listaAtiva === nomeOriginal) {
-            appStorage.listaAtiva = novoNome;
-        }
-        mostrarToast('Lista renomeada com sucesso!');
-    }
-
-    localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
-    fecharModalPromptLista();
-    fecharModalAdmin();
-    sincronizarEAAplicarInterface();
-}
 
 // =========================================================================
 // DIAGRAMA MOBILE (TAP)
@@ -2312,12 +2325,7 @@ document.addEventListener('keydown', e => {
     }
 });
 
-// Popular seletor de gerenciar listas ao abrir o admin
-const _abrirModalAdminOriginal = abrirModalAdmin;
-abrirModalAdmin = function() {
-    _abrirModalAdminOriginal();
-    popularSeletorGerenciarListas();
-};
+
 
 // ── INTEGRAÇÃO COM COMPARTILHAMENTO DO ANDROID (SHARE TARGET API) ──────────
 // Executado dentro do load principal do app (ver início do arquivo)
@@ -2421,6 +2429,7 @@ window.addEventListener('load', () => {
 
 function mudarBpmIndividual(indexMusica, delta) {
     const bloco = document.getElementById(`musica-bloco-${indexMusica}`);
+    if (!bloco) return;
     const idReal = bloco.getAttribute('data-real-id');
     const input = document.getElementById(`bpm-musica-${indexMusica}`);
 
@@ -2500,6 +2509,7 @@ function verificarMetronomo() {
 
 function resetarBpm(indexMusica) {
     const bloco = document.getElementById(`musica-bloco-${indexMusica}`);
+    if (!bloco) return;
     const idReal = bloco.getAttribute('data-real-id');
     const input = document.getElementById(`bpm-musica-${indexMusica}`);
 
@@ -2545,30 +2555,43 @@ function toggleOcultarAcordesRepertorio() {
     const container = document.getElementById("setlist-container");
     const btn = document.getElementById("btn-ocultar-chords");
     
-    if (!container || !btn) return;
+    if (!container || !btn) {
+        console.error("Erro: Elementos 'setlist-container' ou 'btn-ocultar-chords' não encontrados.");
+        return;
+    }
 
-    container.classList.toggle("ocultar-acordes");
-    
-    // Recalibra o motor instantaneamente se a música já estiver rodando
+    // Alterna a classe principal no container
+    const ocultar = container.classList.toggle("ocultar-acordes");
+
+    // Lógica forçada: encontra todas as DIVs dentro do setlist que contêm acordes
+    // e aplica display: none nelas para remover a linha inteira da tela
+    const linhas = container.querySelectorAll('.cifra-container div');
+    linhas.forEach(div => {
+        if (div.querySelector('.chord')) {
+            div.style.display = ocultar ? "none" : "";
+        }
+    });
+
+    // Recalibra o motor de rolagem instantaneamente se já estiver rodando
     if (intervaloRolagem && velocidadGlobalAtual > 0) {
         redefinirMotorRolagem(velocidadGlobalAtual);
     }
 
-    // FORÇA O RECÁLCULO VISUAL: Pede um milissegundo para o CSS encolher a tela e recalcula os relógios
+    // Força recálculo dos tempos e da interface após a mudança visual
     setTimeout(() => {
         calcularTempoTotalShow();
         if (intervaloRolagem) verificarMusicaVisivelNaTela();
     }, 150);
 
-    if (container.classList.contains("ocultar-acordes")) {
+    // Feedback visual para o usuário
+    if (ocultar) {
         btn.classList.add("active");
-        mostrarToast("Modo Cantar: Letra Pura (Velocidade adaptada)");
+        mostrarToast("Modo Cantar: Letra Pura (Linhas de acordes ocultas)");
     } else {
         btn.classList.remove("active");
-        mostrarToast("Modo Músico: Acordes Visíveis (Velocidade normal)");
+        mostrarToast("Modo Músico: Acordes Visíveis");
     }
 }
-
 // =========================================================================
 // CALCULADORA DE TEMPO DE SHOW
 // =========================================================================
@@ -2621,10 +2644,4 @@ function calcularTempoTotalShow() {
 
     badgeTempo.innerText = `⏱️ ~${textoTempo}`;
     badgeTempo.style.display = 'inline-block';
-}
-
-function processarNegrito(texto) {
-    // Substitui *texto* por <strong>texto</strong>
-    // A expressão regular /\*(.*?)\*/g procura por tudo entre asteriscos
-    return texto.replace(/\*(.*?)\*/g, "<strong>$1</strong>");
 }

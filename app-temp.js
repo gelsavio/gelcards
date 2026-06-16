@@ -39,6 +39,9 @@ window.addEventListener('load', () => {
     window.addEventListener('scroll', () => {
         if (intervaloRolagem && !travaTemporariaScroll) verificarMusicaVisivelNaTela();
     });
+
+    // Verificar se veio de um compartilhamento Android
+    processarArquivoCompartilhado();
 });
 
 function obterListasOrdenadasChaves() {
@@ -121,6 +124,10 @@ function gerarHtmlCardMusica(musica, idControle, idRealBanco, isBuscaGlobal = fa
                     <button class="btn-action-card" onclick="abrirPainelVinculacaoLista('${idRealBanco}', '${idControle}')" title="Listas">📋</button>
                     <button class="btn-action-card" style="border-color: var(--chord-color);" onclick="abrirModalEditarCifra('${idRealBanco}')" title="Editar">✏️</button>
                     <button class="btn-action-card" style="border-color:#f87171;" onclick="excluirMusicaGeral('${idRealBanco}')" title="Excluir">🗑️</button>
+                    <button class="btn-action-card" onclick="abrirModalOrdenacao('${appStorage.listaAtiva}')" 
+        title="Reordenar lista atual">
+    ↕️
+</button>
                 </div>
             </div>
         </div>
@@ -363,15 +370,21 @@ function fecharModalTutorialExterno(e) {
     if (e.target.id === "modal-tutorial-container") fecharModalTutorial();
 }
 
+// --- Limpeza: Remova qualquer código de "hack" antigo no fim do arquivo ---
+// Mantenha apenas estas funções de suporte para o Modal Admin:
+
 function abrirModalAdmin() {
     const inputDelay = document.getElementById("input-delay-partida");
     if (inputDelay) inputDelay.value = appStorage.configGlobais.delayPartida || 0;
+
     document.getElementById("modal-admin-container").classList.add("active");
+
     const lblLista = document.getElementById("txt-nome-lista-backup");
     if (lblLista) lblLista.innerText = `"${appStorage.listaAtiva}"`;
+
+    // Preencher o select de ordenação antigo (o que funciona para o seu painel de setas)
     const seletorOrdem = document.getElementById("seletor-lista-ordem");
     seletorOrdem.innerHTML = "";
-
     const chavesOrdenadas = obterListasOrdenadasChaves();
     chavesOrdenadas.forEach(nomeLista => {
         let opt = document.createElement("option");
@@ -380,7 +393,33 @@ function abrirModalAdmin() {
         if (nomeLista === appStorage.listaAtiva) opt.selected = true;
         seletorOrdem.appendChild(opt);
     });
+
+    // Chama o popular para o gerenciamento de exclusão/renomeação
+    popularSeletorGerenciarListas();
+
+    // Chama a renderização inicial do painel de ordenação
     renderizarPainelOrdenacao(seletorOrdem.value);
+}
+
+function popularSeletorGerenciarListas() {
+    const sel = document.getElementById('seletor-lista-gerenciar');
+    if (!sel) return;
+
+    sel.innerHTML = '';
+    const chaves = obterListasOrdenadasChaves().filter(c => c !== 'Todas as Músicas');
+
+    if (chaves.length === 0) {
+        sel.innerHTML = '<option value="">Nenhuma lista criada</option>';
+        return;
+    }
+
+    chaves.forEach(nome => {
+        const opt = document.createElement('option');
+        opt.value = nome;
+        opt.text = nome;
+        if (nome === appStorage.listaAtiva) opt.selected = true;
+        sel.appendChild(opt);
+    });
 }
 
 function renderizarPainelOrdenacao(nomeLista) {
@@ -401,6 +440,8 @@ function renderizarPainelOrdenacao(nomeLista) {
     });
 }
 
+
+
 function moverMusicaNaLista(nomeLista, indexOrigem, direcao) {
     const Math_swap = appStorage.listas[nomeLista];
     const indexDestino = indexOrigem + direcao;
@@ -412,6 +453,96 @@ function moverMusicaNaLista(nomeLista, indexOrigem, direcao) {
         renderizarPainelOrdenacao(nomeLista);
         sincronizarEAAplicarInterface();
     }
+}
+
+/**
+ * Abre o modal de ordenação e renderiza as músicas da lista ativa.
+ * @param {string} nomeLista - O nome da lista a ser ordenada.
+ */
+function abrirModalOrdenacao(nomeLista) {
+    if (!nomeLista) {
+        mostrarToast("Erro: Lista não encontrada.");
+        return;
+    }
+
+    // 1. Abre o modal e define o título
+    const modal = document.getElementById('modal-ordenar-container');
+    if (!modal) {
+        console.error("Elemento modal-ordenar-container não encontrado no index.html");
+        return;
+    }
+    modal.classList.add('active');
+    document.getElementById('titulo-ordem-lista').innerText = nomeLista;
+
+    // 2. Prepara o container
+    const container = document.getElementById("container-lista-ordenacao");
+    if (!container) return;
+    container.innerHTML = "";
+
+    // 3. Busca a lista de IDs
+    const ids = appStorage.listas[nomeLista] || [];
+
+    // 4. Renderiza os itens
+    ids.forEach((id, idx) => {
+        const musica = appStorage.musicasGlobais[id];
+        if (!musica) return;
+
+        const item = document.createElement("div");
+        item.className = "order-item-row"; // Classe reutilizada do Admin
+        item.draggable = true;
+        item.dataset.id = id;
+        item.innerHTML = `
+            <span>${idx + 1}. ${escapeHtml(musica.titulo)}</span>
+            <span style="opacity:0.5; cursor:grab;">≡</span>
+        `;
+
+        // --- Lógica de Arrastar (Drag and Drop) ---
+        item.addEventListener('dragstart', (e) => {
+            item.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', idx);
+        });
+
+        item.addEventListener('dragend', () => {
+            item.classList.remove('dragging');
+        });
+
+        item.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const draggingItem = document.querySelector('.dragging');
+            if (draggingItem && draggingItem !== item) {
+                container.insertBefore(draggingItem, item);
+            }
+        });
+
+        // Ao soltar, atualiza o array de IDs e salva
+        item.addEventListener('drop', () => {
+            salvarNovaOrdem(nomeLista);
+        });
+
+        container.appendChild(item);
+    });
+}
+
+function salvarNovaOrdem(nomeLista) {
+    const itens = document.querySelectorAll('#container-lista-ordenacao .order-item-row');
+    const novaOrdem = Array.from(itens).map(it => it.dataset.id);
+
+    appStorage.listas[nomeLista] = novaOrdem;
+    localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
+
+    // Atualiza a interface principal
+    sincronizarEAAplicarInterface();
+
+    // Refresh visual no modal para numerar corretamente
+    // Nota: Como o DOM já foi alterado pelo drop, apenas re-renderizamos a numeração
+    const spans = document.querySelectorAll('#container-lista-ordenacao .order-item-row span:first-child');
+    spans.forEach((span, i) => {
+        span.textContent = span.textContent.replace(/^\d+\./, `${i + 1}.`);
+    });
+}
+
+function fecharModalOrdenacao() {
+    document.getElementById('modal-ordenar-container').classList.remove('active');
 }
 
 function criarNovaListaUsuario() {
@@ -1201,37 +1332,51 @@ function pularParaMusica(idBloco) {
 const REGEX_LINHA_ACORDES = /^(?:[A-G][#b]?(?:m(?:aj|in)?|aug|dim|sus|add|º|\+)?(?:\d+)?M?(?:\/[A-G][#b]?)?\s+)*[A-G][#b]?(?:m(?:aj|in)?|aug|dim|sus|add|º|\+)?(?:\d+)?M?(?:\/[A-G][#b]?)?$/;
 
 function envolverAcordesEmSpans(linha) {
-    // Adicionamos o "\+" na captura também
     const RE = /([A-G][#b]?(?:m(?:aj|in|7)?|maj7?|aug|dim|sus[24]?|add|º|\+)?(?:2|4|5|6|7|9|11|13)?M?(?:\/[A-G][#b]?)?)/g;
-    return linha.replace(RE, (match, p1, offset, str) => {
-        // ... (o restante da função permanece igual)
+
+    // 1. Processa a linha original para colocar as SPANS nos acordes
+    let linhaProcessada = linha.replace(RE, (match, p1, offset, str) => {
         const antes = offset > 0 ? str[offset - 1] : ' ';
         const depois = str[offset + match.length] || ' ';
+
         const precedidoPorLetraMinuscula = /[a-záéíóúãõâêîôûàèìòùç]/i.test(antes) && /[a-z]/.test(antes);
         const seguidoPorLetraMinuscula = /[a-záéíóúãõâêîôûàèìòùç]/.test(depois);
         if (precedidoPorLetraMinuscula || seguidoPorLetraMinuscula) return match;
+
         const separador = /[\s\(\[\-,\/]/.test(antes) || offset === 0;
         if (!separador) return match;
+
         return `<span class="chord">${match}</span>`;
     });
+
+    // 2. Só agora substituímos espaços múltiplos por &nbsp; para o navegador não colapsar
+    // A regex /( {2,})/g pega dois ou mais espaços e converte em &nbsp;
+    return linhaProcessada.replace(/( {2,})/g, (match) => '&nbsp;'.repeat(match.length));
 }
 
 function processarLinhasTexto(texto) {
     return texto.split('\n').map(linha => {
-        const lim = linha.trim();
+        // NÃO use .trim() aqui se quiser preservar o recuo inicial
+        if (linha.trim() === "") return `<div style="height: 1em;"></div>`;
 
-        // CORREÇÃO: Cria uma linha invisível para manter o espaço do parágrafo
-        if (!lim) return `<div style="height: 1em;"></div>`;
+        // 1. Preserva espaços iniciais transformando em &nbsp;
+        // Esta regex pega todos os espaços no início da linha
+        let espacosIniciais = linha.match(/^\s*/)[0];
+        let linhaSemEspacosIniciais = linha.substring(espacosIniciais.length);
+        let prefixo = espacosIniciais.replace(/ /g, "&nbsp;");
 
-        const temMarcadores = lim.includes('[') || lim.includes('(');
-        const totalEspacos = (linha.match(/ /g) || []).length;
-        const ehEspacada = totalEspacos > lim.length * 0.25;
-        const ehLinhaDeAcordes = REGEX_LINHA_ACORDES.test(lim);
+        // 2. Aplica negrito
+        let linhaFormatada = linhaSemEspacosIniciais.replace(/\*(.*?)\*/g, "<strong>$1</strong>");
 
-        if (temMarcadores || ehEspacada || ehLinhaDeAcordes) {
-            return `<div class="chord-line">${envolverAcordesEmSpans(linha)}</div>`;
+        const temMarcadores = linhaSemEspacosIniciais.includes('[') || linhaSemEspacosIniciais.includes('(');
+        const ehLinhaDeAcordes = REGEX_LINHA_ACORDES.test(linhaSemEspacosIniciais.trim());
+
+        if (temMarcadores || ehLinhaDeAcordes) {
+            return `<div>${prefixo}${envolverAcordesEmSpans(linhaFormatada)}</div>`;
         }
-        return `<div>${linha}</div>`;
+
+        // Para linhas de texto, também aplicamos o prefixo de &nbsp;
+        return `<div>${prefixo}${linhaFormatada}</div>`;
     }).join('');
 }
 
@@ -2006,23 +2151,7 @@ function toggleTelaCheia(forcar) {
 // =========================================================================
 // GERENCIAR LISTAS (EXCLUIR / DUPLICAR)
 // =========================================================================
-function popularSeletorGerenciarListas() {
-    const sel = document.getElementById('seletor-lista-gerenciar');
-    if (!sel) return;
-    sel.innerHTML = '';
-    const chaves = obterListasOrdenadasChaves().filter(c => c !== 'Todas as Músicas');
-    if (chaves.length === 0) {
-        sel.innerHTML = '<option value="">Nenhuma lista criada</option>';
-        return;
-    }
-    chaves.forEach(nome => {
-        const opt = document.createElement('option');
-        opt.value = nome;
-        opt.text = nome;
-        if (nome === appStorage.listaAtiva) opt.selected = true;
-        sel.appendChild(opt);
-    });
-}
+
 
 function excluirLista() {
     const sel = document.getElementById('seletor-lista-gerenciar');
@@ -2124,92 +2253,6 @@ function confirmarAcaoPromptLista() {
     sincronizarEAAplicarInterface();
 }
 
-// ── GESTÃO AVANÇADA DE LISTAS (MODAL CUSTOMIZADA) ─────────────────────
-
-function fecharModalPromptLista() {
-    document.getElementById('modal-prompt-lista').classList.remove('active');
-    document.getElementById('modal-prompt-input').value = '';
-}
-
-function duplicarLista() {
-    const sel = document.getElementById('seletor-lista-gerenciar');
-    const nomeOriginal = sel?.value;
-    
-    if (!nomeOriginal) { 
-        mostrarToast('Nenhuma lista selecionada.'); 
-        return; 
-    }
-
-    document.getElementById('modal-prompt-titulo').innerText = `Duplicar: ${nomeOriginal}`;
-    document.getElementById('modal-prompt-input').value = `${nomeOriginal} (cópia)`;
-    document.getElementById('modal-prompt-acao').value = 'duplicar';
-    document.getElementById('modal-prompt-lista').classList.add('active');
-    
-    setTimeout(() => document.getElementById('modal-prompt-input').select(), 100);
-}
-
-function abrirModalRenomearLista() {
-    const sel = document.getElementById('seletor-lista-gerenciar');
-    const nomeOriginal = sel?.value;
-    
-    if (!nomeOriginal) { 
-        mostrarToast('Nenhuma lista selecionada.'); 
-        return; 
-    }
-
-    document.getElementById('modal-prompt-titulo').innerText = `Renomear: ${nomeOriginal}`;
-    document.getElementById('modal-prompt-input').value = nomeOriginal;
-    document.getElementById('modal-prompt-acao').value = 'renomear';
-    document.getElementById('modal-prompt-lista').classList.add('active');
-    
-    setTimeout(() => document.getElementById('modal-prompt-input').select(), 100);
-}
-
-function confirmarAcaoPromptLista() {
-    const acao = document.getElementById('modal-prompt-acao').value;
-    const novoNome = document.getElementById('modal-prompt-input').value.trim();
-    const sel = document.getElementById('seletor-lista-gerenciar');
-    const nomeOriginal = sel?.value;
-
-    if (!novoNome) {
-        alert('O nome da lista não pode ficar vazio.');
-        return;
-    }
-
-    if (novoNome === nomeOriginal) {
-        fecharModalPromptLista();
-        return;
-    }
-
-    // Validação de existência de nome duplicado
-    if (appStorage.listas[novoNome]) {
-        alert(`Já existe uma lista chamada "${novoNome}". Escolha outro nome.`);
-        return;
-    }
-
-    if (acao === 'duplicar') {
-        // Clona o array de caminhos/IDs para a nova chave
-        appStorage.listas[novoNome] = [...appStorage.listas[nomeOriginal]];
-        appStorage.listaAtiva = novoNome;
-        mostrarToast(`Lista "${novoNome}" criada!`);
-    } 
-    else if (acao === 'renomear') {
-        // Transfere o conteúdo para a nova chave e remove a antiga
-        appStorage.listas[novoNome] = appStorage.listas[nomeOriginal];
-        delete appStorage.listas[nomeOriginal];
-        
-        // Atualiza o estado se a lista modificada for a que está ativa no ecrã
-        if (appStorage.listaAtiva === nomeOriginal) {
-            appStorage.listaAtiva = novoNome;
-        }
-        mostrarToast('Lista renomeada com sucesso!');
-    }
-
-    localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
-    fecharModalPromptLista();
-    fecharModalAdmin();
-    sincronizarEAAplicarInterface();
-}
 
 // =========================================================================
 // DIAGRAMA MOBILE (TAP)
@@ -2295,51 +2338,65 @@ document.addEventListener('keydown', e => {
     }
 });
 
-// Popular seletor de gerenciar listas ao abrir o admin
-const _abrirModalAdminOriginal = abrirModalAdmin;
-abrirModalAdmin = function() {
-    _abrirModalAdminOriginal();
-    popularSeletorGerenciarListas();
-};
+
 
 // ── INTEGRAÇÃO COM COMPARTILHAMENTO DO ANDROID (SHARE TARGET API) ──────────
-
-window.addEventListener('load', async () => {
+// Executado dentro do load principal do app (ver início do arquivo)
+async function processarArquivoCompartilhado() {
     const urlParams = new URLSearchParams(window.location.search);
-    
-    // Se a URL tiver ?shared=1, significa que o Android acabou de compartilhar um arquivo
-    if (urlParams.has('shared')) {
-        try {
-            const cache = await caches.open('gelcifras-cache-v1');
-            const response = await cache.match('/shared-file.txt');
+    if (!urlParams.has('shared')) return;
 
+    // Limpar URL imediatamente para evitar reprocessamento ao recarregar
+    window.history.replaceState({}, document.title, window.location.pathname);
+
+    try {
+        // Varrer todos os caches disponíveis — não depende do nome hardcoded
+        const nomesCaches = await caches.keys();
+        let conteudoTexto = null;
+
+        for (const nomecache of nomesCaches) {
+            const cache = await caches.open(nomecache);
+            const response = await cache.match('/shared-file.txt');
             if (response) {
-                const conteudoTexto = await response.text();
-                
-                const campoImportacao = document.getElementById('input-cifra-bruta');
-                if (campoImportacao) {
-                    campoImportacao.value = conteudoTexto;
-                    
-                    if (typeof abrirModalCadastrarMusica === 'function') {
-                        abrirModalCadastrarMusica();
-                    }
-                    if (typeof mostrarToast !== 'undefined') {
-                        mostrarToast("Cifra recebida! Processe para salvar.");
-                    }
-                }
-                
-                // Limpa o arquivo da memória
+                conteudoTexto = await response.text();
                 await cache.delete('/shared-file.txt');
+                break;
             }
-        } catch (err) {
-            console.error("Erro ao ler arquivo compartilhado:", err);
-            alert("Não foi possível carregar o arquivo.");
         }
-        
-        // Limpa a barra de endereços para não repetir a importação se atualizar a página
-        window.history.replaceState({}, document.title, window.location.pathname);
+
+        if (!conteudoTexto || !conteudoTexto.trim()) {
+            mostrarToast('⚠️ Arquivo compartilhado vazio ou não encontrado.');
+            return;
+        }
+
+        // Tentar como backup JSON primeiro
+        try {
+            const pacote = JSON.parse(conteudoTexto);
+            if (pacote.musicasGlobais && pacote.listas) {
+                backupTemporarioParaProcessar = pacote;
+                const h3 = document.querySelector('#modal-interacao-restore .modal-header h3');
+                if (h3) h3.textContent = '📥 Importar arquivo compartilhado';
+                document.getElementById('modal-interacao-restore').classList.add('active');
+                mostrarToast('📂 Repertório recebido — escolha como importar');
+                return;
+            }
+        } catch (e) { /* não é JSON — tratar como cifra */ }
+
+        // É uma cifra em texto — abrir modal de cadastro
+        abrirModalCadastrarMusica();
+        setTimeout(() => {
+            const campo = document.getElementById('input-cifra-bruta');
+            if (campo) {
+                campo.value = conteudoTexto;
+                mostrarToast('🎵 Cifra recebida — revise e salve');
+            }
+        }, 350);
+
+    } catch (err) {
+        console.error('Erro ao ler arquivo compartilhado:', err);
+        mostrarToast('❌ Erro ao processar arquivo compartilhado.');
     }
-});
+}
 
 // =========================================================================
 // PAUSAR ROLAGEM AO CLICAR NA TELA (MECÂNICA DE PALCO)

@@ -407,6 +407,7 @@ select option {
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.15s;
+    margin: 2px;
 }
 
 .btn-action-card:hover {
@@ -445,6 +446,20 @@ select option {
 }
 
 .ocultar-acordes .chord-line {
+    display: none !important;
+}
+
+
+/* Quando o modo cantar estiver ativo */
+
+#setlist-container.ocultar-acordes .chord {
+    display: none !important;
+}
+
+
+/* Ocultar a linha inteira se ela contiver apenas acordes e espaços */
+
+#setlist-container.ocultar-acordes .cifra-container div:has(.chord) {
     display: none !important;
 }
 

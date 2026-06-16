@@ -141,14 +141,7 @@
                 </div>
             </div>
 
-            <div class="admin-section">
-                <h4>📑 Reordenar Sequência da Lista</h4>
-                <div style="margin-bottom:8px; display:flex; align-items:center; gap:8px;">
-                    <label style="font-size:12px; font-weight:bold;">Lista alvo:</label>
-                    <select id="seletor-lista-ordem" onchange="renderizarPainelOrdenacao(this.value)" style="max-width:100%; background:var(--card-bg); color:var(--text-color); border-color:var(--border-color);"></select>
-                </div>
-                <div id="container-lista-ordenacao" style="max-height:180px; overflow-y:auto; padding-right:4px;"></div>
-            </div>
+
 
             <div class="admin-section">
                 <h4>📂 Importar Repertório Modelo</h4>
@@ -373,6 +366,17 @@
                 <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px 0;">Cole o texto da cifra abaixo. O título deve estar na 1ª linha e o cantor na 2ª.</p>
                 <textarea id="input-cifra-bruta" rows="12" class="input-text" style="font-family:monospace;font-size:13px;line-height:1.5;" placeholder="Título da Música&#10;Nome do Artista&#10;Tom: C&#10;&#10;(Intro) C Am F G&#10;..."></textarea>
                 <button class="btn-sucesso" onclick="processarESalvarNovaMusica()">Processar e Salvar no Aparelho</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-ordenar-container">
+        <div class="modal-wrapper">
+            <div class="modal-header">
+                <h3>↕️ Reordenar: <span id="titulo-ordem-lista"></span></h3>
+                <button class="btn-fechar-modal" onclick="fecharModalOrdenacao()">&times;</button>
+            </div>
+            <div id="container-lista-ordenacao-novo" style="max-height: 300px; overflow-y: auto;">
             </div>
         </div>
     </div>
