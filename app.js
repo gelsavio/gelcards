@@ -1204,40 +1204,51 @@ function pularParaMusica(idBloco) {
 const REGEX_LINHA_ACORDES = /^(?:[A-G][#b]?(?:m(?:aj|in)?|aug|dim|sus|add|º|\+)?(?:\d+)?M?(?:\/[A-G][#b]?)?\s+)*[A-G][#b]?(?:m(?:aj|in)?|aug|dim|sus|add|º|\+)?(?:\d+)?M?(?:\/[A-G][#b]?)?$/;
 
 function envolverAcordesEmSpans(linha) {
-    // Adicionamos o "\+" na captura também
     const RE = /([A-G][#b]?(?:m(?:aj|in|7)?|maj7?|aug|dim|sus[24]?|add|º|\+)?(?:2|4|5|6|7|9|11|13)?M?(?:\/[A-G][#b]?)?)/g;
-    return linha.replace(RE, (match, p1, offset, str) => {
-        // ... (o restante da função permanece igual)
+
+    // 1. Processa a linha original para colocar as SPANS nos acordes
+    let linhaProcessada = linha.replace(RE, (match, p1, offset, str) => {
         const antes = offset > 0 ? str[offset - 1] : ' ';
         const depois = str[offset + match.length] || ' ';
+
         const precedidoPorLetraMinuscula = /[a-záéíóúãõâêîôûàèìòùç]/i.test(antes) && /[a-z]/.test(antes);
         const seguidoPorLetraMinuscula = /[a-záéíóúãõâêîôûàèìòùç]/.test(depois);
         if (precedidoPorLetraMinuscula || seguidoPorLetraMinuscula) return match;
+
         const separador = /[\s\(\[\-,\/]/.test(antes) || offset === 0;
         if (!separador) return match;
+
         return `<span class="chord">${match}</span>`;
     });
+
+    // 2. Só agora substituímos espaços múltiplos por &nbsp; para o navegador não colapsar
+    // A regex /( {2,})/g pega dois ou mais espaços e converte em &nbsp;
+    return linhaProcessada.replace(/( {2,})/g, (match) => '&nbsp;'.repeat(match.length));
 }
 
 function processarLinhasTexto(texto) {
     return texto.split('\n').map(linha => {
-        const lim = linha.trim();
-        if (!lim) return `<div style="height: 1em;"></div>`;
+        // NÃO use .trim() aqui se quiser preservar o recuo inicial
+        if (linha.trim() === "") return `<div style="height: 1em;"></div>`;
 
-        // 1. Aplica a transformação de negrito ANTES de qualquer outra lógica
-        let linhaFormatada = lim.replace(/\*(.*?)\*/g, "<strong>$1</strong>");
+        // 1. Preserva espaços iniciais transformando em &nbsp;
+        // Esta regex pega todos os espaços no início da linha
+        let espacosIniciais = linha.match(/^\s*/)[0];
+        let linhaSemEspacosIniciais = linha.substring(espacosIniciais.length);
+        let prefixo = espacosIniciais.replace(/ /g, "&nbsp;");
 
-        const temMarcadores = lim.includes('[') || lim.includes('(');
-        const totalEspacos = (linha.match(/ /g) || []).length;
-        const ehEspacada = totalEspacos > linha.length * 0.25;
-        const ehLinhaDeAcordes = REGEX_LINHA_ACORDES.test(lim);
+        // 2. Aplica negrito
+        let linhaFormatada = linhaSemEspacosIniciais.replace(/\*(.*?)\*/g, "<strong>$1</strong>");
 
-        if (temMarcadores || ehEspacada || ehLinhaDeAcordes) {
-            // 2. Envolve a linha formatada (que já contém o <strong>) nos spans de acordes
-            return `<div class="chord-line">${envolverAcordesEmSpans(linhaFormatada)}</div>`;
+        const temMarcadores = linhaSemEspacosIniciais.includes('[') || linhaSemEspacosIniciais.includes('(');
+        const ehLinhaDeAcordes = REGEX_LINHA_ACORDES.test(linhaSemEspacosIniciais.trim());
+
+        if (temMarcadores || ehLinhaDeAcordes) {
+            return `<div>${prefixo}${envolverAcordesEmSpans(linhaFormatada)}</div>`;
         }
-        // 3. Linhas de texto comum recebem o negrito aqui
-        return `<div>${linhaFormatada}</div>`;
+
+        // Para linhas de texto, também aplicamos o prefixo de &nbsp;
+        return `<div>${prefixo}${linhaFormatada}</div>`;
     }).join('');
 }
 
