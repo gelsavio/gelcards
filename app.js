@@ -1316,7 +1316,9 @@ function pularParaMusica(idBloco) {
     document.getElementById("seletor-musica").value = "";
 }
 // Adicionamos o "\+" no regex para reconhecer acordes como A+
-const REGEX_LINHA_ACORDES = /^(?:[A-G][#b]?(?:m(?:aj|in)?|aug|dim|sus|add|º|\+)?(?:\d+)?M?(?:\/[A-G][#b]?)?\s+)*[A-G][#b]?(?:m(?:aj|in)?|aug|dim|sus|add|º|\+)?(?:\d+)?M?(?:\/[A-G][#b]?)?$/;
+// Removemos o limite de início e fim rigorosos e focamos na repetição de acordes/espaços
+// Adicionado suporte a '/' (D/C), '4' (D4), '°' (C°) e melhor tratado o espaço
+const REGEX_LINHA_ACORDES = /^(?:(?:[A-G][#b]?(?:m(?:aj|in)?|aug|dim|sus|add|º|°|\+)?(?:\d+)?M?(?:\/[A-G][#b]?)?)|&nbsp;|\s)+$/i;
 
 function envolverAcordesEmSpans(linha) {
     const RE = /([A-G][#b]?(?:m(?:aj|in|7)?|maj7?|aug|dim|sus[24]?|add|º|\+)?(?:2|4|5|6|7|9|11|13)?M?(?:\/[A-G][#b]?)?)/g;
@@ -1343,26 +1345,29 @@ function envolverAcordesEmSpans(linha) {
 
 function processarLinhasTexto(texto) {
     return texto.split('\n').map(linha => {
-        // NÃO use .trim() aqui se quiser preservar o recuo inicial
         if (linha.trim() === "") return `<div style="height: 1em;"></div>`;
 
-        // 1. Preserva espaços iniciais transformando em &nbsp;
-        // Esta regex pega todos os espaços no início da linha
+        // 1. Identificar recuo
         let espacosIniciais = linha.match(/^\s*/)[0];
         let linhaSemEspacosIniciais = linha.substring(espacosIniciais.length);
         let prefixo = espacosIniciais.replace(/ /g, "&nbsp;");
 
-        // 2. Aplica negrito
+        // 2. Limpeza rigorosa para o teste da Regex
+        // Remove &nbsp; e mantém espaços comuns. Trim() limpa bordas.
+        const linhaParaTeste = linhaSemEspacosIniciais.replace(/&nbsp;/g, ' ').trim();
+
+        // 3. Aplica negrito (se houver *texto*)
         let linhaFormatada = linhaSemEspacosIniciais.replace(/\*(.*?)\*/g, "<strong>$1</strong>");
 
+        // 4. Teste final
         const temMarcadores = linhaSemEspacosIniciais.includes('[') || linhaSemEspacosIniciais.includes('(');
-        const ehLinhaDeAcordes = REGEX_LINHA_ACORDES.test(linhaSemEspacosIniciais.trim());
+        const ehLinhaDeAcordes = REGEX_LINHA_ACORDES.test(linhaParaTeste);
 
+        // Se for linha de acorde, aplicamos a formatação do "envolverAcordesEmSpans"
         if (temMarcadores || ehLinhaDeAcordes) {
             return `<div>${prefixo}${envolverAcordesEmSpans(linhaFormatada)}</div>`;
         }
 
-        // Para linhas de texto, também aplicamos o prefixo de &nbsp;
         return `<div>${prefixo}${linhaFormatada}</div>`;
     }).join('');
 }
