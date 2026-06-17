@@ -206,20 +206,7 @@ function sincronizarEAAplicarInterface() {
 
             container.appendChild(bloco); // <- Mantenha essa linha que já existia logo abaixo
 
-            // --- 2. Transposição correta ao reconstruir a tela para tons menores ---
-            if (musica.tomCustomizado && musica.tomCustomizado !== musica.tomOriginal) {
-                let matchOrig = musica.tomOriginal.match(/^([A-G][#b]?)/);
-                let baseOrig = matchOrig ? matchOrig[1] : "C";
-                baseOrig = norm[baseOrig] || baseOrig;
-                let idxOrig = escalaCromatica.indexOf(baseOrig);
 
-                if (idxExibicao !== -1 && idxOrig !== -1) {
-                    const deltaRender = idxExibicao - idxOrig;
-                    bloco.querySelectorAll('.chord').forEach(span => {
-                        span.textContent = transporAcorde(span.textContent, deltaRender);
-                    });
-                }
-            }
 
             // Restaurar capo salvo
             const capoSalvo = musica.capoCustomizado || 0;
@@ -1318,10 +1305,11 @@ function pularParaMusica(idBloco) {
 // Adicionamos o "\+" no regex para reconhecer acordes como A+
 // Removemos o limite de início e fim rigorosos e focamos na repetição de acordes/espaços
 // Adicionado suporte a '/' (D/C), '4' (D4), '°' (C°) e melhor tratado o espaço
+// Adicionado tanto o símbolo de grau (°) quanto a letra sobrescrita (º)
 const REGEX_LINHA_ACORDES = /^(?:(?:[A-G][#b]?(?:m(?:aj|in)?|aug|dim|sus|add|º|°|\+)?(?:\d+)?M?(?:\/[A-G][#b]?)?)|&nbsp;|\s)+$/i;
 
 function envolverAcordesEmSpans(linha) {
-    const RE = /([A-G][#b]?(?:m(?:aj|in|7)?|maj7?|aug|dim|sus[24]?|add|º|\+)?(?:2|4|5|6|7|9|11|13)?M?(?:\/[A-G][#b]?)?)/g;
+    const RE = /([A-G][#b]?(?:m(?:aj|in|7)?|maj7?|aug|dim|sus[24]?|add|º|°|\+)?(?:\d+)?M?(?:\/[A-G][#b]?)?)/g;
 
     // 1. Processa a linha original para colocar as SPANS nos acordes
     let linhaProcessada = linha.replace(RE, (match, p1, offset, str) => {
@@ -1586,14 +1574,17 @@ const BANCO_ACORDES = {
 
 // Normaliza nome do acorde para bater com o banco (ex: "F#m7" → tenta "F#m", "F#")
 function normalizarAcordeParaBusca(nomeOriginal) {
-    // Separar nota de baixo (ex: C/E → base="C", baixo="E")
-    const partesSlash = nomeOriginal.split('/');
-    const nome = partesSlash[0].trim();
+    // Substitui símbolos de diminuto por 'dim' logo no início
+    let nome = nomeOriginal.replace(/[º°]/g, 'dim');
+
+    // Agora continua com a lógica original, mas usando o 'nome' já limpo
+    const partesSlash = nome.split('/');
+    nome = partesSlash[0].trim();
     const notaBaixo = partesSlash[1] ? partesSlash[1].trim() : null;
 
     const tentativas = [];
 
-    // 1. Nome exato (sem o baixo)
+    // 1. Nome exato
     tentativas.push(nome);
 
     // 2. Normalizar bemóis para equivalentes sustenidos
@@ -2108,7 +2099,7 @@ function filtrarBusca(termo) {
             container.appendChild(div); // <- Mantenha essa linha
 
             // Aplica as transições matemáticas caso a música já estivesse alterada no banco
-            if (musica.tomCustomizado && musica.tomCustomizado !== musica.tomOriginal) {
+              if (musica.tomCustomizado && musica.tomCustomizado !== musica.tomOriginal) {
                 let matchOrig = musica.tomOriginal.match(/^([A-G][#b]?)/);
                 let baseOrig = matchOrig ? matchOrig[1] : "C";
                 baseOrig = norm[baseOrig] || baseOrig;
