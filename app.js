@@ -312,22 +312,24 @@ function salvarAlteracoesCifraEditada() {
     const id = document.getElementById("edit-musica-id").value;
     const titulo = document.getElementById("edit-musica-titulo").value.trim();
     const artista = document.getElementById("edit-musica-artista").value.trim();
-    const tomOriginal = document.getElementById("edit-musica-tom-original").value;
+    const novoTomOriginal = document.getElementById("edit-musica-tom-original").value.trim(); // Pega o valor do novo input
     const letra = document.getElementById("edit-musica-letra").value;
 
-    if (!titulo || !artista) {
-        alert("Título e Artista não podem ficar vazios!");
+    if (!titulo || !artista || !novoTomOriginal) {
+        alert("Título, Artista e Tom Original não podem ficar vazios!");
         return;
     }
 
     appStorage.musicasGlobais[id].titulo = titulo;
     appStorage.musicasGlobais[id].artista = artista;
-    appStorage.musicasGlobais[id].tomOriginal = tomOriginal;
+
+    // Atualiza o tom original
+    appStorage.musicasGlobais[id].tomOriginal = novoTomOriginal;
+
+    // Opcional: Se você quiser que o tom customizado acompanhe a mudança do original:
+    appStorage.musicasGlobais[id].tomCustomizado = novoTomOriginal;
+
     appStorage.musicasGlobais[id].letraCifra = letra;
-    // Preservar capoOriginal se já existir; redetectar do texto se quiser
-    if (appStorage.musicasGlobais[id].capoOriginal === undefined) {
-        appStorage.musicasGlobais[id].capoOriginal = appStorage.musicasGlobais[id].capoCustomizado || 0;
-    }
 
     localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
     fecharModalEditar();
