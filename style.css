@@ -15,7 +15,7 @@
 
 [data-theme="bege"] {
     --bg-color: #f5f0e8;
-    --card-bg: #fdfaf4;
+    --card-bg: #f7f4ef;
     --text-color: #3b2f1e;
     --text-muted: #8a7560;
     --chord-color: #8b5e3c;
@@ -29,8 +29,8 @@
 }
 
 [data-theme="dark"] {
-    --bg-color: #0f172a;
-    --card-bg: #1e293b;
+    --bg-color: #000000;
+    --card-bg: #000000;
     --text-color: #f1f5f9;
     --text-muted: #94a3b8;
     --chord-color: #f59e0b;

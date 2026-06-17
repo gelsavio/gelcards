@@ -94,11 +94,18 @@
             <span class="menu-flutuante-icone">❓</span>
             <span>Ajuda</span>
         </div>
+
+        <div id="item-atualizar-app" class="menu-flutuante-item" style="display:none; border-top: 1px solid var(--border-color); color: var(--success-color);" onclick="forcarAtualizacao(); fecharMenuFlutuante();">
+            <span class="menu-flutuante-icone">🔄</span>
+            <span>Atualização Disponível</span>
+        </div>
+
     </div>
 
     <footer class="app-footer">
         <div class="copyright-text">
             &copy; 2026 pertencem a gelsavio@gmail.com. Todos os direitos reservados.
+            <button id="btn-atualizar-app" class="btn-float" style="display:none; background:#ef4444;" onclick="forcarAtualizacao()">    🔄 Atualizar App        </button>
         </div>
     </footer>
 

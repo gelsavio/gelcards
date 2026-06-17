@@ -242,7 +242,7 @@ function sincronizarEAAplicarInterface() {
             }
         });
     } else {
-        container.innerHTML = "<div style='padding:50px 20px;text-align:center;color:var(--text-muted); font-weight:bold;'>Sua lista está limpa. Clique na engrenagem (⚙️) para adicionar cifras!</div>";
+        container.innerHTML = "<div style='padding:50px 20px;text-align:center;color:var(--text-muted); font-weight:bold;'>Nenhuma cifra ou lista encontrada.</div>";
     }
     // Inicia a calculadora após meio segundo para dar tempo do navegador desenhar a tela
     setTimeout(calcularTempoTotalShow, 500);
@@ -750,7 +750,7 @@ function alternarTemaFundo() {
     const novo = ciclo[atual] || 'light';
     document.documentElement.setAttribute('data-theme', novo);
     localStorage.setItem('theme', novo);
-    const nomes = { light: '☀️ Claro', dark: '🌙 Escuro', bege: '🪵 Bege' };
+    const nomes = { light: '☀️ Claro', dark: '🌙 Escuro', bege: '🪵 Neutro' };
     mostrarToast(`Tema: ${nomes[novo]}`);
 }
 
@@ -2592,6 +2592,7 @@ function toggleOcultarAcordesRepertorio() {
         mostrarToast("Modo Músico: Acordes Visíveis");
     }
 }
+
 // =========================================================================
 // CALCULADORA DE TEMPO DE SHOW
 // =========================================================================
@@ -2644,4 +2645,30 @@ function calcularTempoTotalShow() {
 
     badgeTempo.innerText = `⏱️ ~${textoTempo}`;
     badgeTempo.style.display = 'inline-block';
+}
+
+let newWorker;
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+        reg.addEventListener('updatefound', () => {
+            newWorker = reg.installing;
+            newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // Exibe o item de atualização no menu
+                    const itemAtualizar = document.getElementById('item-atualizar-app');
+                    if (itemAtualizar) {
+                        itemAtualizar.style.display = 'flex'; // ou 'block', dependendo do seu CSS
+                        mostrarToast("Nova versão disponível no menu!");
+                    }
+                }
+            });
+        });
+    });
+}
+
+function forcarAtualizacao() {
+    if (!newWorker) return;
+    newWorker.postMessage({ action: 'skipWaiting' });
+    window.location.reload();
 }
