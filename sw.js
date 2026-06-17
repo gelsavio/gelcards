@@ -1,5 +1,5 @@
 // ATENÇÃO: Toda vez que você atualizar o app, mude este número (ex: v2, v3, v4)
-const CACHE_NAME = 'gelcifras-cache-v311';
+const CACHE_NAME = 'gelcifras-cache-v401';
 
 const ASSETS_TO_CACHE = [
     '/',
@@ -59,4 +59,10 @@ self.addEventListener('fetch', event => {
     event.respondWith(
         caches.match(event.request).then(response => response || fetch(event.request))
     );
+});
+
+self.addEventListener('message', (event) => {
+    if (event.data.action === 'skipWaiting') {
+        self.skipWaiting();
+    }
 });
