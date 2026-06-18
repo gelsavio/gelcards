@@ -211,13 +211,32 @@ select option {
 }
 
 .floating-action-rack {
+    /* Mantenha o que já tem, mas adicione/ajuste isto: */
     position: fixed;
+    right: 20px;
+    /* Distância da borda direita */
     bottom: 20px;
-    right: 15px;
+    /* Distância da borda inferior */
     display: flex;
     flex-direction: column;
+    /* Empilha os botões */
+    align-items: flex-end;
+    /* Alinha tudo à direita do container */
     gap: 8px;
-    z-index: 999;
+    /* Espaçamento entre botões */
+    z-index: 1000;
+}
+
+
+/* Container do grupo de play que criamos */
+
+.grupo-rolagem {
+    display: flex;
+    flex-direction: row;
+    /* Mantém os botões de play lado a lado */
+    align-items: center;
+    /* Alinhamento vertical */
+    gap: 4px;
 }
 
 .btn-float {

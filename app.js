@@ -1256,12 +1256,14 @@ function toggleRolagemUnica() {
     toggleRolagemGeral(); // Reutiliza a lógica existente
 }
 
-function toggleRolagemGeral() {
+function toggleRolagemGeral(ehUnico = false) { // Padrão false (Contínuo)
     const btnContinuo = document.getElementById("btn-scroll");
     const btnUnico = document.getElementById("btn-scroll-unico");
     const paineisPalco = document.querySelectorAll('.sub-control-panel');
     const placar = document.getElementById('placar-rolagem');
     const barra = document.getElementById('barra-progresso-musica');
+
+    modoRolagemUnica = ehUnico;
 
     if (intervaloRolagem || intervaloContagem) {
         // --- PAUSAR ROLAGEM / CANCELAR CONTAGEM ---
@@ -1277,9 +1279,9 @@ function toggleRolagemGeral() {
         pararMetronomo();
 
         // Reseta ambos os botões para o estado de "Play"
-        btnContinuo.innerText = "▶️";
+        btnContinuo.innerText = "▶T";
         btnContinuo.classList.remove("active");
-        btnUnico.innerText = "▶️🎵";
+        btnUnico.innerText = "▶1";
         btnUnico.classList.remove("active");
 
         // REAPARECER PAINÉIS (Respeitando a preferência salva)
