@@ -1019,7 +1019,8 @@ function mudarTomIndividual(indexMusica, semitons) {
     // 4. Atualiza o visual
     document.getElementById(`tom-txt-${indexMusica}`).innerText = novoTom;
     bloco.querySelectorAll('.chord').forEach(span => {
-        span.textContent = transporAcorde(span.textContent, semitons);
+        const acordeAtual = span.textContent.trim(); // Remove o espaço antes de transpor
+        span.textContent = transporAcorde(acordeAtual, semitons);
     });
 
     // Atualiza o índice no HTML
@@ -1163,8 +1164,10 @@ function mudarCapoIndividual(indexMusica, delta) {
 }
 
 function transporAcorde(acorde, semitons) {
-    const match = acorde.match(/^([A-G][#b]?)(.*)/);
-    if (!match) return acorde;
+    const acordeLimpo = acorde.trim();
+    const match = acordeLimpo.match(/^([A-G][#b]?)(.*)/);
+    if (!match) return acorde; // Se não for acorde, retorna o original (com espaço)
+
     let notaBase = match[1];
     const resto = match[2];
     const norm = {
