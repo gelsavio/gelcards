@@ -18,6 +18,12 @@ let intervaloMetronomo = null;
 let bpmAtual = 0;
 let intervaloContagem = null;
 
+let modoRolagemUnica = false;
+let musicaAlvoParaParar = null;
+
+const REGEX_ACORDE = /(^|\s)([A-G][#b]?(?:m(?:aj|in|7)?|maj7?|aug|dim|sus[24]?|add|º|°|\+)?(?:\d+)?M?(?:\/[A-G][#b]?)?)(?=\s|$)/g;
+const REGEX_LINHA_ACORDES = /^(?:(?:[A-G][#b]?(?:m(?:aj|in)?|aug|dim|sus|add|º|°|\+)?(?:\d+)?M?(?:\/[A-G][#b]?)?)|&nbsp;|\s)+$/i;
+
 
 window.addEventListener('load', () => {
     const temaSalvo = localStorage.getItem('theme') || 'light';
@@ -33,6 +39,8 @@ window.addEventListener('load', () => {
     if (!appStorage.listas["Todas as Músicas"]) {
         appStorage.listas["Todas as Músicas"] = Object.keys(appStorage.musicasGlobais || {});
     }
+
+    if (!appStorage.configGlobais) appStorage.configGlobais = { delayPartida: 0, paineisOcultos: false };
 
     sincronizarEAAplicarInterface();
 
@@ -74,7 +82,9 @@ function gerarHtmlCardMusica(musica, idControle, idRealBanco, isBuscaGlobal = fa
 
         <div class="sub-control-panel">
             <div class="panel-column" style="min-width:115px;">
-                <span class="sub-txt-label">Tom <button class="btn-reset-tom" onclick="resetarTomOriginalFabrica('${idControle}', '${escapeHtml(musica.tomOriginal)}')" title="Retornar ao Tom Original">🔄</button></span>
+                <span class="sub-txt-label">Tom 
+                    <button class="btn-reset-tom"  onclick="resetarTomOriginalFabrica('${idControle}', '${idRealBanco}')"  title="Retornar ao Tom Original">🔄</button>
+                </span>
                 <div class="adjustment-row">
                     <button class="btn-num" onclick="mudarTomIndividual('${idControle}', -1)">−</button>
                     <span id="tom-txt-${idControle}" class="num-display">${escapeHtml(tomExibicao)}</span>
@@ -143,23 +153,20 @@ function sincronizarEAAplicarInterface() {
     const seletorLista = document.getElementById("seletor-lista");
     const seletorMusica = document.getElementById("seletor-musica");
     const container = document.getElementById("setlist-container");
+
     appStorage.listas["Todas as Músicas"] = Object.keys(appStorage.musicasGlobais || {});
 
-    // INJEÇÃO TÁTICA: Escreve o nome da lista no cabeçalho
     const headerNomeLista = document.getElementById("header-nome-lista");
     if (headerNomeLista) {
         headerNomeLista.innerText = appStorage.listaAtiva;
     }
 
-    // ALTERAÇÃO DO SELETOR: Cria o placeholder fixo igual ao das músicas
     seletorLista.innerHTML = '<option value="" disabled selected hidden>Ir para lista…</option>';
-
     const chavesOrdenadas = obterListasOrdenadasChaves();
     chavesOrdenadas.forEach(nomeLista => {
         let opt = document.createElement("option");
         opt.value = nomeLista;
         opt.text = nomeLista;
-        // Removemos o 'opt.selected = true' para que o botão sempre volte para "Ir para lista..."
         seletorLista.appendChild(opt);
     });
 
@@ -167,71 +174,76 @@ function sincronizarEAAplicarInterface() {
     container.innerHTML = "";
 
     const idsMusicasDaLista = appStorage.listas[appStorage.listaAtiva] || [];
+    const norm = { Db: "C#", Eb: "D#", Gb: "F#", Ab: "G#", Bb: "A#" };
 
-    if (idsMusicasDaLista.length > 0) {
-        // Objeto para normalizar bemóis na hora da renderização
-        const norm = { Db: "C#", Eb: "D#", Gb: "F#", Ab: "G#", Bb: "A#" };
+    idsMusicasDaLista.forEach((id, index) => {
+        const musica = appStorage.musicasGlobais[id];
+        if (!musica) return;
 
-        idsMusicasDaLista.forEach((id, index) => {
-            const musica = appStorage.musicasGlobais[id];
-            if (!musica) return;
+        const tomExibicao = musica.tomCustomizado || musica.tomOriginal || "C";
+        const fonteExibicao = musica.fonteCustomizada || 16;
+        const velocidadExibicao = musica.velocidadeCustomizada || 10;
+        const bpmExibicao = musica.bpmCustomizado || 0;
 
-            const tomExibicao = musica.tomCustomizado || musica.tomOriginal || "C";
-            const fonteExibicao = musica.fonteCustomizada || 16;
-            const velocidadExibicao = musica.velocidadeCustomizada || 10;
-            const bpmExibicao = musica.bpmCustomizado || 0;
+        let matchTomExib = tomExibicao.match(/^([A-G][#b]?)/);
+        let baseExibicao = matchTomExib ? matchTomExib[1] : "C";
+        baseExibicao = norm[baseExibicao] || baseExibicao;
+        let idxExibicao = escalaCromatica.indexOf(baseExibicao);
+        if (idxExibicao === -1) idxExibicao = 0;
 
-            // --- 1. Extrair índice limpo do tom para não quebrar o data-tom-index ---
-            let matchTomExib = tomExibicao.match(/^([A-G][#b]?)/);
-            let baseExibicao = matchTomExib ? matchTomExib[1] : "C";
-            baseExibicao = norm[baseExibicao] || baseExibicao;
-            let idxExibicao = escalaCromatica.indexOf(baseExibicao);
-            if (idxExibicao === -1) idxExibicao = 0; // Fallback de segurança
+        let opt = document.createElement("option");
+        opt.value = `musica-bloco-${index}`;
+        opt.text = `${index + 1}. ${escapeHtml(musica.titulo)}`;
+        seletorMusica.appendChild(opt);
 
-            let opt = document.createElement("option");
-            opt.value = `musica-bloco-${index}`;
-            opt.text = `${index + 1}. ${escapeHtml(musica.titulo)}`;
-            seletorMusica.appendChild(opt);
+        let bloco = document.createElement("div");
+        bloco.className = "cifra-container";
+        bloco.id = `musica-bloco-${index}`;
+        bloco.setAttribute('data-index', index);
+        bloco.setAttribute('data-real-id', id);
+        bloco.setAttribute('data-tom-index', idxExibicao);
+        bloco.innerHTML = gerarHtmlCardMusica(musica, index, id, false);
+        container.appendChild(bloco);
 
-            const classeOcultamentoInicial = intervaloRolagem ? "sub-control-panel ocultar-dinamico" : "sub-control-panel";
+        // --- LÓGICA DE TRANSPOSIÇÃO CENTRALIZADA ---
+        let matchOrig = (musica.tomOriginal || "C").match(/^([A-G][#b]?)/);
+        let baseOrig = matchOrig ? matchOrig[1] : "C";
+        baseOrig = norm[baseOrig] || baseOrig;
+        let idxOrig = escalaCromatica.indexOf(baseOrig);
 
-            let bloco = document.createElement("div");
-            bloco.className = "cifra-container";
-            bloco.id = `musica-bloco-${index}`;
-            bloco.setAttribute('data-index', index);
-            bloco.setAttribute('data-real-id', id);
-            bloco.setAttribute('data-tom-index', idxExibicao); // Usa o índice matemático seguro
-            // O HTML gigante foi substituído por esta chamada:
-            bloco.innerHTML = gerarHtmlCardMusica(musica, index, id, false);
-
-            container.appendChild(bloco); // <- Mantenha essa linha que já existia logo abaixo
-
-
-
-            // Restaurar capo salvo
-            const capoSalvo = musica.capoCustomizado || 0;
-            if (musica.capoOriginal === undefined) {
-                musica.capoOriginal = capoSalvo;
-                appStorage.musicasGlobais[musica.id] = musica;
-            }
-            bloco.setAttribute('data-capo', capoSalvo);
-            const inputCapo = document.getElementById(`capo-select-${index}`);
-            const txtCapo = document.getElementById(`capo-txt-${index}`);
-            if (inputCapo) inputCapo.value = capoSalvo;
-            if (txtCapo) txtCapo.innerText = capoSalvo;
-
-            if (capoSalvo > 0) {
+        if (idxExibicao !== -1 && idxOrig !== -1) {
+            const delta = idxExibicao - idxOrig;
+            if (delta !== 0) {
                 bloco.querySelectorAll('.chord').forEach(span => {
-                    span.textContent = transporAcorde(span.textContent, -capoSalvo);
+                    span.textContent = transporAcorde(span.textContent, delta);
                 });
-                // Usa o índice limpo que calculamos lá em cima
-                exibirDicaCapo(index, idxExibicao, capoSalvo);
             }
-        });
+        }
+
+        // --- RESTAURAÇÃO DE CAPO ---
+        const capoSalvo = musica.capoCustomizado || 0;
+        bloco.setAttribute('data-capo', capoSalvo);
+        const inputCapo = document.getElementById(`capo-select-${index}`);
+        const txtCapo = document.getElementById(`capo-txt-${index}`);
+        if (inputCapo) inputCapo.value = capoSalvo;
+        if (txtCapo) txtCapo.innerText = capoSalvo;
+
+        if (capoSalvo > 0) {
+            bloco.querySelectorAll('.chord').forEach(span => {
+                span.textContent = transporAcorde(span.textContent, -capoSalvo);
+            });
+            exibirDicaCapo(index, idxExibicao, capoSalvo);
+        }
+    });
+
+    const paineisVisiveis = document.querySelector('.sub-control-panel');
+
+    if (appStorage.configGlobais && appStorage.configGlobais.paineisOcultos) {
+        alternarVisibilidadePainelControles(false);
     } else {
-        container.innerHTML = "<div style='padding:50px 20px;text-align:center;color:var(--text-muted); font-weight:bold;'>Nenhuma cifra ou lista encontrada.</div>";
+        alternarVisibilidadePainelControles(true);
     }
-    // Inicia a calculadora após meio segundo para dar tempo do navegador desenhar a tela
+
     setTimeout(calcularTempoTotalShow, 500);
 }
 
@@ -302,43 +314,69 @@ function abrirModalEditarCifra(idMusica) {
     document.getElementById("edit-musica-id").value = idMusica;
     document.getElementById("edit-musica-titulo").value = musica.titulo;
     document.getElementById("edit-musica-artista").value = musica.artista || "";
-    document.getElementById("edit-musica-tom-original").value = musica.tomOriginal;
-    document.getElementById("edit-musica-letra").value = musica.letraCifra;
 
+    // Inicializa o novo display de Tom Original
+    document.getElementById("edit-tom-txt").innerText = musica.tomOriginal || "C";
+    document.getElementById("edit-musica-tom-original").value = musica.tomOriginal || "C";
+
+    document.getElementById("edit-musica-letra").value = musica.letraCifra;
     document.getElementById("modal-editar-container").classList.add("active");
 }
 
 function salvarAlteracoesCifraEditada() {
     const id = document.getElementById("edit-musica-id").value;
-    const titulo = document.getElementById("edit-musica-titulo").value.trim();
-    const artista = document.getElementById("edit-musica-artista").value.trim();
-    const novoTomOriginal = document.getElementById("edit-musica-tom-original").value.trim(); // Pega o valor do novo input
-    const letra = document.getElementById("edit-musica-letra").value;
+    const musica = appStorage.musicasGlobais[id];
+    const novoTom = document.getElementById("edit-musica-tom-original").value.trim();
+    const tomAntigo = musica.tomOriginal;
 
-    if (!titulo || !artista || !novoTomOriginal) {
-        alert("Título, Artista e Tom Original não podem ficar vazios!");
-        return;
+    // Calcula o deslocamento (delta) necessário
+    const idxAntigo = escalaCromatica.indexOf(tomAntigo.match(/^([A-G][#b]?)/)[1]);
+    const idxNovo = escalaCromatica.indexOf(novoTom.match(/^([A-G][#b]?)/)[1]);
+    const delta = idxNovo - idxAntigo;
+
+    // Atualiza os metadados
+    musica.titulo = document.getElementById("edit-musica-titulo").value.trim();
+    musica.artista = document.getElementById("edit-musica-artista").value.trim();
+
+    // A MÁGICA: Transpõe a letra no texto antes de salvar
+    if (delta !== 0) {
+        musica.letraCifra = aplicarTransposicaoNoTexto(document.getElementById("edit-musica-letra").value, delta);
+    } else {
+        musica.letraCifra = document.getElementById("edit-musica-letra").value;
     }
 
-    appStorage.musicasGlobais[id].titulo = titulo;
-    appStorage.musicasGlobais[id].artista = artista;
+    // Atualiza os tons
+    musica.tomOriginal = novoTom;
+    musica.tomCustomizado = novoTom;
 
-    // Atualiza o tom original
-    appStorage.musicasGlobais[id].tomOriginal = novoTomOriginal;
-
-    // Opcional: Se você quiser que o tom customizado acompanhe a mudança do original:
-    appStorage.musicasGlobais[id].tomCustomizado = novoTomOriginal;
-
-    appStorage.musicasGlobais[id].letraCifra = letra;
-
+    // Salva e reflete
     localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
     fecharModalEditar();
-    mostrarToast("✓ Alterações salvas no aparelho!");
     sincronizarEAAplicarInterface();
+    mostrarToast("✓ Cifra transposta e salva com sucesso!");
+}
+
+function aplicarTransposicaoNoTexto(texto, semitons) {
+    // A variável local 'RE' foi removida e substituímos pela global REGEX_ACORDE
+    REGEX_ACORDE.lastIndex = 0; // Importante resetar o índice da regex global
+
+    return texto.replace(REGEX_ACORDE, (match, prefixo, acorde) => {
+        return prefixo + transporAcorde(acorde, semitons);
+    });
 }
 
 function fecharModalEditar() {
+    // 1. Fecha o modal
     document.getElementById("modal-editar-container").classList.remove("active");
+
+    // 2. Limpa explicitamente todos os campos para evitar confusão na próxima abertura
+    document.getElementById("edit-musica-id").value = "";
+    document.getElementById("edit-musica-titulo").value = "";
+    document.getElementById("edit-musica-artista").value = "";
+    document.getElementById("edit-musica-tom-original").value = "";
+    document.getElementById("edit-musica-letra").value = "";
+
+    mostrarToast("Edição cancelada.");
 }
 
 function fecharModalEditarExterno(e) {
@@ -794,6 +832,18 @@ function atualizarContadorMusica(blocoAtual) {
     if (percentual < 0) percentual = 0;
     if (percentual > 100) percentual = 100;
 
+    if (modoRolagemUnica && percentual >= 99.5) {
+        // Pequena pausa para a música terminar de sair da tela
+        setTimeout(() => {
+            if (intervaloRolagem) {
+                mostrarToast("Fim da música selecionada.");
+                toggleRolagemGeral();
+            }
+        }, 500);
+        return; // Interrompe o resto do processamento desta atualização
+    }
+
+
     if (barra) {
         barra.style.width = `${percentual}%`;
         if (percentual >= 90) barra.classList.add('alerta');
@@ -905,104 +955,97 @@ function mudarVelocidadeIndividual(indexMusica, delta) {
     if (intervaloRolagem) verificarMusicaVisivelNaTela();
 }
 
+function mudarTomModalEditar(semitons) {
+    const display = document.getElementById("edit-tom-txt");
+    const input = document.getElementById("edit-musica-tom-original");
+
+    // Lista de notas para transposição
+    const escala = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+    let tomAtual = display.innerText;
+    // Remove sufixo (ex: 'm') para calcular a nota base
+    let base = tomAtual.match(/^([A-G][#b]?)/)[1];
+    let sufixo = tomAtual.substring(base.length);
+
+    // Normaliza bemóis
+    const norm = { 'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#' };
+    base = norm[base] || base;
+
+    let idx = escala.indexOf(base);
+    idx = (idx + semitons + 12) % 12;
+
+    const novoTom = escala[idx] + sufixo;
+
+    display.innerText = novoTom;
+    input.value = novoTom;
+}
+
 function mudarTomIndividual(indexMusica, semitons) {
     const bloco = document.getElementById(`musica-bloco-${indexMusica}`);
     if (!bloco) return;
     const idReal = bloco.getAttribute('data-real-id');
+    const musica = appStorage.musicasGlobais[idReal];
 
-    // 1. Ignoramos o índice quebrado e pegamos o texto real da tela
-    const tomAtualTexto = (document.getElementById(`tom-txt-${indexMusica}`) || {}).innerText || "";
+    // 1. Pegamos o tom atual que está no banco ou na tela
+    const tomAtual = (document.getElementById(`tom-txt-${indexMusica}`) || {}).innerText || musica.tomCustomizado || musica.tomOriginal;
 
-    // 2. Separamos a nota (ex: G) do sufixo (ex: m) com a mesma proteção que você usa nos acordes
-    const matchTom = tomAtualTexto.match(/^([A-G][#b]?)(.*)/);
-    if (!matchTom) return;
+    // 2. Usamos a lógica que já existe no seu app para transpor o nome do tom (a string)
+    // Precisamos de uma nota base limpa para a transposição
+    const match = tomAtual.match(/^([A-G][#b]?)(.*)/);
+    if (!match) return;
 
-    let notaBase = matchTom[1];
-    const sufixo = matchTom[2];
+    // A função transporAcorde que você já tem no app.js faz exatamente o que precisamos
+    const novoTom = transporAcorde(tomAtual, semitons);
 
-    // Normalização de bemóis (Db vira C# etc)
-    const norm = { Db: "C#", Eb: "D#", Gb: "F#", Ab: "G#", Bb: "A#" };
-    notaBase = norm[notaBase] || notaBase;
+    // 3. Salva no banco
+    musica.tomCustomizado = novoTom;
+    localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
 
-    // 3. Calculamos a posição da nota limpa
-    let idx = escalaCromatica.indexOf(notaBase);
-    if (idx === -1) return;
-
-    // Fazemos a matemática dos semitons
-    idx = (idx + semitons + 12) % 12;
-    bloco.setAttribute('data-tom-index', idx); // Conserta o index no HTML para o Capo não se perder
-
-    // 4. Remontamos o tom colando o sufixo de volta
-    const novoTomTexto = escalaCromatica[idx] + sufixo;
-    document.getElementById(`tom-txt-${indexMusica}`).innerText = novoTomTexto;
-
-    // Transpõe o corpo da música
+    // 4. Atualiza o visual
+    document.getElementById(`tom-txt-${indexMusica}`).innerText = novoTom;
     bloco.querySelectorAll('.chord').forEach(span => {
         span.textContent = transporAcorde(span.textContent, semitons);
     });
 
-    if (appStorage.musicasGlobais[idReal]) {
-        appStorage.musicasGlobais[idReal].tomCustomizado = novoTomTexto;
-        localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
-    }
+    // Atualiza o índice no HTML
+    const novoIdx = (parseInt(bloco.getAttribute('data-tom-index')) + semitons + 12) % 12;
+    bloco.setAttribute('data-tom-index', novoIdx);
 
-    // Atualiza a dica do capo
-    const sel = document.getElementById(`capo-select-${indexMusica}`);
-    const capoAtivo = sel ? parseInt(sel.value) : 0;
+    // Atualiza dica de capo, se houver
+    const capoAtivo = parseInt(document.getElementById(`capo-select-${indexMusica}`).value);
     if (capoAtivo > 0) {
-        exibirDicaCapo(indexMusica, idx, capoAtivo);
+        exibirDicaCapo(indexMusica, novoIdx, capoAtivo);
     }
 }
 
-function resetarTomOriginalFabrica(indexMusica, tomOriginalFabrica) {
+function resetarTomOriginalFabrica(indexMusica, idReal) {
+    // Busca a referência
+    const musica = appStorage.musicasGlobais[idReal];
+
+    // Verificação de segurança: se não achar, avisa e para a função
+    if (!musica) {
+        console.error("Erro no Reset: Música não encontrada no banco com ID:", idReal);
+        mostrarToast("Erro: ID de música inválido.");
+        return;
+    }
+
     const bloco = document.getElementById(`musica-bloco-${indexMusica}`);
     if (!bloco) return;
-    const idReal = bloco.getAttribute('data-real-id');
-    const idxAtual = parseInt(bloco.getAttribute('data-tom-index'));
 
-    // 1. Isola a nota base do tom original de fábrica (ex: tira o "m" do "Gm")
-    const matchOrig = tomOriginalFabrica.match(/^([A-G][#b]?)/);
-    if (!matchOrig) return;
+    // Sincroniza o customizado com o que está no cadastro
+    musica.tomCustomizado = musica.tomOriginal;
+    localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
 
-    let notaOrigBase = matchOrig[1];
+    // Renderiza
+    bloco.innerHTML = gerarHtmlCardMusica(musica, indexMusica, idReal, false);
 
-    // Normalização para bemóis, caso o tom de fábrica venha como Bb, Eb, etc.
+    // Atualiza o índice do DOM para o transporAcorde não se perder
     const norm = { Db: "C#", Eb: "D#", Gb: "F#", Ab: "G#", Bb: "A#" };
-    notaOrigBase = norm[notaOrigBase] || notaOrigBase;
+    let base = musica.tomOriginal.match(/^([A-G][#b]?)/)[1];
+    base = norm[base] || base;
+    bloco.setAttribute('data-tom-index', escalaCromatica.indexOf(base));
 
-    // 2. Acha a posição real da nota pura na escala
-    const idxOriginal = escalaCromatica.indexOf(notaOrigBase);
-
-    if (idxAtual === -1 || idxOriginal === -1) return;
-
-    // Evita rodar a função se já estiver no tom original exato
-    const tomAtualTexto = (document.getElementById(`tom-txt-${indexMusica}`) || {}).innerText || "";
-    if (idxAtual === idxOriginal && tomAtualTexto === tomOriginalFabrica) return;
-
-    // 3. Calcula a diferença de semitons para transpor o corpo da música
-    const semitonsDiferenca = idxOriginal - idxAtual;
-
-    // 4. Aplica os valores na tela
-    bloco.setAttribute('data-tom-index', idxOriginal);
-    document.getElementById(`tom-txt-${indexMusica}`).innerText = tomOriginalFabrica;
-
-    bloco.querySelectorAll('.chord').forEach(span => {
-        span.textContent = transporAcorde(span.textContent, semitonsDiferenca);
-    });
-
-    if (appStorage.musicasGlobais[idReal]) {
-        appStorage.musicasGlobais[idReal].tomCustomizado = tomOriginalFabrica;
-        localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
-    }
-
-    // 5. Atualiza a dica do capo para não ficar dessincronizada após o reset
-    const sel = document.getElementById(`capo-select-${indexMusica}`);
-    const capoAtivo = sel ? parseInt(sel.value) : 0;
-    if (capoAtivo > 0 && typeof exibirDicaCapo !== 'undefined') {
-        exibirDicaCapo(indexMusica, idxOriginal, capoAtivo);
-    }
-
-    mostrarToast(`Tom original (${tomOriginalFabrica}) restaurado!`);
+    mostrarToast(`Tom original (${musica.tomOriginal}) restaurado!`);
 }
 
 function resetarCapoOriginal(indexMusica, capoOriginal) {
@@ -1178,11 +1221,44 @@ function verificarMusicaVisivelNaTela() {
     }
     verificarMetronomo()
 }
+// =========================================================================
+// MODO LIMPO: OCULTAR CONTROLES
+// =========================================================================
+function alternarVisibilidadePainelControles(mostrar) {
+    const paineisPalco = document.querySelectorAll('.sub-control-panel');
+    paineisPalco.forEach(p => {
+        p.style.display = mostrar ? 'flex' : 'none';
+    });
+}
 
+function alternarVisibilidadePainelControlesManual() {
+    const primeiroPainel = document.querySelector('.sub-control-panel');
+    const estaVisivel = primeiroPainel && primeiroPainel.style.display !== 'none';
+    const novoEstado = estaVisivel; // Se estava visível, agora queremos ocultar (false)
 
+    // Inverte e salva no banco
+    appStorage.configGlobais.paineisOcultos = novoEstado;
+    localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
+
+    alternarVisibilidadePainelControles(!novoEstado);
+    mostrarToast(!novoEstado ? "Controles ocultados" : "Controles visíveis");
+}
+
+//-----
+
+function toggleRolagemUnica() {
+    modoRolagemUnica = true;
+
+    // Identifica qual música deve parar a rolagem ao terminar
+    const blocoAtual = obterBlocoMusicaAtualNaTela();
+    musicaAlvoParaParar = blocoAtual ? blocoAtual.getAttribute('data-index') : null;
+
+    toggleRolagemGeral(); // Reutiliza a lógica existente
+}
 
 function toggleRolagemGeral() {
-    const btn = document.getElementById("btn-scroll");
+    const btnContinuo = document.getElementById("btn-scroll");
+    const btnUnico = document.getElementById("btn-scroll-unico");
     const paineisPalco = document.querySelectorAll('.sub-control-panel');
     const placar = document.getElementById('placar-rolagem');
     const barra = document.getElementById('barra-progresso-musica');
@@ -1200,11 +1276,19 @@ function toggleRolagemGeral() {
         intervaloRolagem = null;
         pararMetronomo();
 
-        btn.innerText = "▶";
-        btn.classList.remove("active");
+        // Reseta ambos os botões para o estado de "Play"
+        btnContinuo.innerText = "▶️";
+        btnContinuo.classList.remove("active");
+        btnUnico.innerText = "▶️🎵";
+        btnUnico.classList.remove("active");
 
-        // REAPARECER PAINÉIS DE CONFIGURAÇÃO
-        paineisPalco.forEach(p => p.style.display = 'flex');
+        // REAPARECER PAINÉIS (Respeitando a preferência salva)
+        const devePermanecerOculto = appStorage.configGlobais && appStorage.configGlobais.paineisOcultos;
+        if (!devePermanecerOculto) {
+            paineisPalco.forEach(p => p.style.display = 'flex');
+        } else {
+            paineisPalco.forEach(p => p.style.display = 'none');
+        }
 
         document.body.classList.remove('rolagem-ativa');
         toggleTelaCheia(false);
@@ -1216,10 +1300,17 @@ function toggleRolagemGeral() {
         }
     } else {
         // --- INICIAR ROLAGEM ---
-        btn.innerText = "■";
-        btn.classList.add("active");
 
-        // OCULTAR PAINÉIS DE CONFIGURAÇÃO MANUALMENTE
+        // Define qual botão está ativo (visual)
+        if (modoRolagemUnica) {
+            btnUnico.innerText = "⏹";
+            btnUnico.classList.add("active");
+        } else {
+            btnContinuo.innerText = "⏹";
+            btnContinuo.classList.add("active");
+        }
+
+        // Oculta painéis ao iniciar (independente da preferência, para limpar o palco)
         paineisPalco.forEach(p => p.style.display = 'none');
 
         toggleTelaCheia(true);
@@ -1232,7 +1323,6 @@ function toggleRolagemGeral() {
 
         setTimeout(() => {
             if (blocoFocado) {
-                // Scroll instantâneo para evitar conflito com a rolagem automática
                 const rect = blocoFocado.getBoundingClientRect();
                 window.scrollTo({
                     top: window.scrollY + rect.top - (window.innerHeight * 0.15),
@@ -1242,22 +1332,19 @@ function toggleRolagemGeral() {
 
             const delay = (appStorage.configGlobais && appStorage.configGlobais.delayPartida) ? appStorage.configGlobais.delayPartida : 0;
 
-            if (delay > 0) {
-                iniciarContagemRegressiva(delay, () => {
-                    velocidadGlobalAtual = -1;
-                    bpmAtual = -1;
-                    verificarMetronomo();
-                    verificarMusicaVisivelNaTela();
-                    if (blocoFocado) atualizarContadorMusica(blocoFocado);
-                    redefinirMotorRolagem(velocidadGlobalAtual);
-                });
-            } else {
+            const iniciarMotor = () => {
                 velocidadGlobalAtual = -1;
                 bpmAtual = -1;
                 verificarMetronomo();
                 verificarMusicaVisivelNaTela();
                 if (blocoFocado) atualizarContadorMusica(blocoFocado);
                 redefinirMotorRolagem(velocidadGlobalAtual);
+            };
+
+            if (delay > 0) {
+                iniciarContagemRegressiva(delay, iniciarMotor);
+            } else {
+                iniciarMotor();
             }
         }, 300);
     }
@@ -1304,17 +1391,13 @@ function pularParaMusica(idBloco) {
     }
     document.getElementById("seletor-musica").value = "";
 }
-// Adicionamos o "\+" no regex para reconhecer acordes como A+
-// Removemos o limite de início e fim rigorosos e focamos na repetição de acordes/espaços
-// Adicionado suporte a '/' (D/C), '4' (D4), '°' (C°) e melhor tratado o espaço
-// Adicionado tanto o símbolo de grau (°) quanto a letra sobrescrita (º)
-const REGEX_LINHA_ACORDES = /^(?:(?:[A-G][#b]?(?:m(?:aj|in)?|aug|dim|sus|add|º|°|\+)?(?:\d+)?M?(?:\/[A-G][#b]?)?)|&nbsp;|\s)+$/i;
 
 function envolverAcordesEmSpans(linha) {
-    const RE = /([A-G][#b]?(?:m(?:aj|in|7)?|maj7?|aug|dim|sus[24]?|add|º|°|\+)?(?:\d+)?M?(?:\/[A-G][#b]?)?)/g;
+
+    REGEX_ACORDE.lastIndex = 0;
 
     // 1. Processa a linha original para colocar as SPANS nos acordes
-    let linhaProcessada = linha.replace(RE, (match, p1, offset, str) => {
+    let linhaProcessada = linha.replace(REGEX_ACORDE, (match, p1, offset, str) => {
         const antes = offset > 0 ? str[offset - 1] : ' ';
         const depois = str[offset + match.length] || ' ';
 
