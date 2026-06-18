@@ -257,10 +257,24 @@
                 <input type="text" id="edit-musica-titulo" class="input-text">
                 <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px; margin-top:8px;">Artista/Cantor:</label>
                 <input type="text" id="edit-musica-artista" class="input-text">
+
+                <!-- tom original -->
                 <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px; margin-top:8px;">Tom Original:</label>
-                <input type="text" id="edit-musica-tom-original" class="input-text" placeholder="Ex: C, Am, G..."> <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px; margin-top:8px;">Corpo da Letra e Cifra:</label>
+                <div class="panel-column" style="width: 140px; margin-bottom: 10px;">
+                    <div class="adjustment-row">
+                        <button class="btn-num" onclick="mudarTomModalEditar(-1)">−</button>
+                        <span id="edit-tom-txt" class="num-display" style="min-width: 40px; text-align: center;">C</span>
+                        <button class="btn-num" onclick="mudarTomModalEditar(1)">+</button>
+                    </div>
+                    <input type="hidden" id="edit-musica-tom-original" value="C">
+                </div>
+
+                <!-- letra e cifra -->
                 <textarea id="edit-musica-letra" rows="12" class="input-text" style="font-family:monospace; font-size:13px; line-height:1.5;"></textarea>
-                <button class="btn-sucesso" style="margin-top:10px;" onclick="salvarAlteracoesCifraEditada()">Salvar Alterações</button>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button class="btn-sucesso" style="flex: 2;" onclick="salvarAlteracoesCifraEditada()">Salvar Alterações</button>
+                    <button class="btn-pequeno" style="flex: 1; background: #94a3b8; color: white;" onclick="fecharModalEditar()">Cancelar</button>
+                </div>
             </div>
         </div>
     </div>
@@ -388,7 +402,7 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=4.0.6"></script>
 
     <script>
         if ('serviceWorker' in navigator) {
