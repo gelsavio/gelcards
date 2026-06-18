@@ -1240,28 +1240,35 @@ function verificarMusicaVisivelNaTela() {
 // MODO LIMPO: OCULTAR CONTROLES
 // =========================================================================
 function alternarVisibilidadePainelControles(mostrar) {
-    const paineisPalco = document.querySelectorAll('.sub-control-panel');
-    paineisPalco.forEach(p => {
+    // Seleciona apenas os painéis de controle reais (os botões de edição)
+    const paineisControle = document.querySelectorAll('.sub-control-panel');
+
+    // Lógica para os painéis de controle
+    paineisControle.forEach(p => {
         if (mostrar) {
             p.classList.remove('ocultar-dinamico', 'hidden');
         } else {
-            // Adicionamos as duas classes para garantir tanto a visibilidade quanto o colapso de espaço
             p.classList.add('ocultar-dinamico', 'hidden');
         }
     });
+
+
 }
 
 function alternarVisibilidadePainelControlesManual() {
-    const primeiroPainel = document.querySelector('.sub-control-panel');
-    const estaVisivel = primeiroPainel && primeiroPainel.style.display !== 'none';
-    const novoEstado = estaVisivel; // Se estava visível, agora queremos ocultar (false)
+    // 1. Inverte o estado atual guardado no banco
+    const estadoAtual = appStorage.configGlobais.paineisOcultos;
+    const novoEstado = !estadoAtual;
 
-    // Inverte e salva no banco
+    // 2. Salva o novo estado
     appStorage.configGlobais.paineisOcultos = novoEstado;
     localStorage.setItem('gelcifras_db', JSON.stringify(appStorage));
 
+    // 3. Atualiza a interface (Invertemos aqui: se é oculto, passamos false para mostrar)
+    // Se novoEstado for true (ocultar), passamos false para a função
     alternarVisibilidadePainelControles(!novoEstado);
-    mostrarToast(!novoEstado ? "Controles ocultados" : "Controles visíveis");
+
+    mostrarToast(novoEstado ? "Controles ocultados" : "Controles visíveis");
 }
 
 //-----
@@ -1276,17 +1283,20 @@ function toggleRolagemUnica() {
     toggleRolagemGeral(); // Reutiliza a lógica existente
 }
 
-function toggleRolagemGeral(ehUnico = false) { // Padrão false (Contínuo)
+function toggleRolagemGeral(ehUnico = false) {
     const btnContinuo = document.getElementById("btn-scroll");
     const btnUnico = document.getElementById("btn-scroll-unico");
-    const paineisPalco = document.querySelectorAll('.sub-control-panel');
     const placar = document.getElementById('placar-rolagem');
     const barra = document.getElementById('barra-progresso-musica');
 
     modoRolagemUnica = ehUnico;
 
     if (intervaloRolagem || intervaloContagem) {
-        // --- PAUSAR ROLAGEM / CANCELAR CONTAGEM ---
+        // --- PAUSAR ROLAGEM ---
+
+        // Captura a posição EXATA antes de qualquer alteração de layout
+        const scrollParada = window.scrollY;
+
         if (intervaloContagem) {
             clearInterval(intervaloContagem);
             intervaloContagem = null;
@@ -1298,19 +1308,15 @@ function toggleRolagemGeral(ehUnico = false) { // Padrão false (Contínuo)
         intervaloRolagem = null;
         pararMetronomo();
 
-        // Reseta ambos os botões para o estado de "Play"
+        // Reseta botões
         btnContinuo.innerText = "▶T";
         btnContinuo.classList.remove("active");
         btnUnico.innerText = "▶1";
         btnUnico.classList.remove("active");
 
-        // REAPARECER PAINÉIS (Respeitando a preferência salva)
+        // REAPARECER PAINÉIS (Usando a função de visibilidade que criamos)
         const devePermanecerOculto = appStorage.configGlobais && appStorage.configGlobais.paineisOcultos;
-        if (!devePermanecerOculto) {
-            paineisPalco.forEach(p => p.style.display = 'flex');
-        } else {
-            paineisPalco.forEach(p => p.style.display = 'none');
-        }
+        alternarVisibilidadePainelControles(!devePermanecerOculto);
 
         document.body.classList.remove('rolagem-ativa');
         toggleTelaCheia(false);
@@ -1320,10 +1326,13 @@ function toggleRolagemGeral(ehUnico = false) { // Padrão false (Contínuo)
             barra.style.display = 'none';
             barra.style.width = '0%';
         }
+
+        // FORÇA o scroll a manter a posição onde parou
+        window.scrollTo({ top: scrollParada, behavior: 'instant' });
+
     } else {
         // --- INICIAR ROLAGEM ---
 
-        // Define qual botão está ativo (visual)
         if (modoRolagemUnica) {
             btnUnico.innerText = "⏹";
             btnUnico.classList.add("active");
@@ -1332,8 +1341,8 @@ function toggleRolagemGeral(ehUnico = false) { // Padrão false (Contínuo)
             btnContinuo.classList.add("active");
         }
 
-        // Oculta painéis ao iniciar (independente da preferência, para limpar o palco)
-        paineisPalco.forEach(p => p.style.display = 'none');
+        // OCULTA PAINÉIS (Usando a função com animação suave)
+        alternarVisibilidadePainelControles(false);
 
         toggleTelaCheia(true);
         document.body.classList.add('rolagem-ativa');
@@ -1343,6 +1352,8 @@ function toggleRolagemGeral(ehUnico = false) { // Padrão false (Contínuo)
 
         const blocoFocado = obterBlocoMusicaAtualNaTela();
 
+        // O timeout agora deve ser igual ou maior que a sua transição CSS (ex: 0.9s ou 1.2s)
+        // para garantir que os painéis sumiram antes do motor começar
         setTimeout(() => {
             if (blocoFocado) {
                 const rect = blocoFocado.getBoundingClientRect();
@@ -1368,7 +1379,7 @@ function toggleRolagemGeral(ehUnico = false) { // Padrão false (Contínuo)
             } else {
                 iniciarMotor();
             }
-        }, 300);
+        }, 1000); // Aumentado para sincronizar com a transição de 0.9s/1.2s do CSS
     }
 }
 
