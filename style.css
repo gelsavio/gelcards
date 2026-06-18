@@ -320,7 +320,7 @@ select option {
     opacity: 1;
     transform: translateY(0);
     overflow: hidden;
-    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, margin-bottom 0.4s ease, padding 0.4s ease;
+    transition: max-height 1.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.9s ease, margin-bottom 1.2s ease, padding 1.2s ease;
 }
 
 
@@ -329,6 +329,19 @@ select option {
 .cifra-container pre {
     order: 3;
     margin-top: 10px;
+}
+
+.sub-control-panel {
+    transition: opacity 0.9s ease-in-out, visibility 0.9s;
+    opacity: 1;
+    visibility: visible;
+}
+
+.sub-control-panel.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    /* Impede cliques quando invisível */
 }
 
 .sub-control-panel.ocultar-dinamico {

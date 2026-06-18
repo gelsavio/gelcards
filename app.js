@@ -896,6 +896,21 @@ function navegarEntreMusicas(direcao) {
     const blocoAtual = obterBlocoMusicaAtualNaTela();
     if (!blocoAtual) return;
 
+    // Se a direção for "anterior" (-1) e não estivermos no topo da música, volta pro topo dela
+    if (direcao === -1) {
+        const topoMusica = blocoAtual.getBoundingClientRect().top;
+        // Se o topo da música estiver a mais de 200px do topo da tela, consideramos que está "no meio"
+        if (topoMusica < 150) {
+            window.scrollTo({
+                top: window.scrollY + topoMusica - 160, // Volta para o início do bloco
+                behavior: 'smooth'
+            });
+            mostrarToast("🔄 Voltando ao início da música");
+            return;
+        }
+    }
+
+    // --- Lógica normal de pular músicas ---
     const blocosVisiveis = Array.from(document.querySelectorAll('.cifra-container:not(.busca-oculto)'));
     const idxAtual = blocosVisiveis.indexOf(blocoAtual);
     const proximoIdx = idxAtual + direcao;
@@ -911,9 +926,9 @@ function navegarEntreMusicas(direcao) {
 
     const blocoAlvo = blocosVisiveis[proximoIdx];
 
-    // Se for um bloco temporário de busca global, injetamos um ID de passagem
     if (!blocoAlvo.id) {
-        blocoAlvo.id = 'busca-alvo-' + Date.now();
+        const idReal = blocoAlvo.getAttribute('data-real-id');
+        blocoAlvo.id = 'musica-alvo-' + idReal;
     }
 
     pularParaMusica(blocoAlvo.id);
@@ -1227,7 +1242,12 @@ function verificarMusicaVisivelNaTela() {
 function alternarVisibilidadePainelControles(mostrar) {
     const paineisPalco = document.querySelectorAll('.sub-control-panel');
     paineisPalco.forEach(p => {
-        p.style.display = mostrar ? 'flex' : 'none';
+        if (mostrar) {
+            p.classList.remove('ocultar-dinamico', 'hidden');
+        } else {
+            // Adicionamos as duas classes para garantir tanto a visibilidade quanto o colapso de espaço
+            p.classList.add('ocultar-dinamico', 'hidden');
+        }
     });
 }
 
