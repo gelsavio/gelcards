@@ -1,432 +1,103 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GelCifras - Gerenciador de Exibição em Listas</title>
-    <link class="link-manifest" rel="manifest" href="manifest.json">
-    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png">
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Paciência – Klondike Solitaire</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="shortcut icon" href="apple-touch-icon.png" type="image/png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-    <div id="barra-progresso-musica" class="barra-progresso-musica"></div>
-    <header class="app-header">
-        <div class="header-content">
-            <div class="brand-wrapper">
-                <img src="apple-touch-icon.png" alt="Logo GelCifras" class="header-logo" onerror="this.style.display='none'">
-                <div class="brand-box">
-                    <h2>GelCifras- Gerenciador de Exibição em Lista</h2>
-                    <div style="font-size: 11px; color: #fcd34d; display: flex; align-items: center; gap: 6px; margin-top: 2px;">
-                        <span id="header-nome-lista">Nenhuma lista</span>
-                        <span id="app-version-badge" style="background: var(--chord-color); color: white; padding: 2px 6px; border-radius: 8px; font-size: 10px; font-weight: bold; margin-left: 6px; display: none;"></span>
-                        <span>•</span>
-                        <span id="badge-tempo-show" style="background: var(--success-color); color: white; padding: 1px 6px; border-radius: 8px; font-weight: bold;">⏱️ 0m</span>
-                    </div>
 
-                </div>
-            </div>
-            <div class="selectors-group">
-                <select id="seletor-lista" onchange="alternarListaAtiva(this.value)"></select>
-                <select id="seletor-musica" onchange="pularParaMusica(this.value)"></select>
-            </div>
+<div id="game-container">
 
-            <!-- A MÁGICA AQUI: Barra de busca movida para o cabeçalho fixo -->
-            <div class="barra-busca-wrapper" id="barra-busca-wrapper" style="display:none; width: 100%; padding: 10px 0 0 0;">
-                <input type="text" id="campo-busca" class="campo-busca" placeholder="🔍 Buscar música ou artista…" oninput="filtrarBusca(this.value)" autocomplete="off">
-            </div>
-        </div>
-    </header>
-
-    <div id="placar-rolagem" class="placar-rolagem" style="display:none;"></div>
-
-    <div id="visual-metronome" class="metronome-container" style="display:none;">
-        <div class="metronome-light" id="light-1"></div>
-        <div class="metronome-light" id="light-2"></div>
-        <div class="metronome-light" id="light-3"></div>
-        <div class="metronome-light" id="light-4"></div>
+  <div id="top-bar">
+    <div class="brand-section">
+      <h1>♠ Paciência</h1>
+      <div id="item-atualizar-app" style="display:none; background:#ef4444; color:white; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; align-items:center; margin-top:4px;" onclick="forcarAtualizacao()">
+        🔄 Nova versão disponível! Clique para atualizar
+      </div>
     </div>
-
-    <div id="overlay-contagem" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); font-size:120px; font-weight:900; color:var(--chord-color); z-index:9999; text-shadow: 0 4px 15px rgba(0,0,0,0.4); pointer-events: none;"></div>
-
-    <div class="container">
-        <div id="setlist-container"></div>
+    <div id="stats">
+      <span>⏱ <span id="timer">00:00</span></span>
+      <span>🃏 <span id="move-count">0</span> mov.</span>
     </div>
-
-    <!-- Rack flutuante enxuto -->
-    <div class="floating-action-rack">
-        <button class="btn-vel-rapida" onclick="ajustarVelocidadeAtiva(1)" title="Aumentar velocidade">+</button>
-        <button class="btn-vel-rapida" onclick="ajustarVelocidadeAtiva(-1)" title="Diminuir velocidade">−</button>
-        <button class="btn-float btn-novo" onclick="abrirModalCadastrarMusica()" title="Nova Música">➕</button>
-        <button class="btn-float btn-busca" onclick="toggleBusca(); fecharMenuFlutuante();" title="Buscar Música">🔍</button>
-        <button class="btn-float btn-menu" onclick="toggleMenuFlutuante()" title="Menu">☰</button>
-        <button id="btn-ocultar-chords" class="btn-float" onclick="toggleOcultarAcordesRepertorio()" title="Ocultar Acordes">🎤</button>
-        <button class="btn-float btn-nav-tracks" onclick="navegarEntreMusicas(-1)" title="Música Anterior">⏮</button>
-        <button class="btn-float btn-nav-tracks" onclick="navegarEntreMusicas(1)" title="Próxima Música">⏭</button>
-
-        <div class="grupo-rolagem" style="display: flex; flex-direction: row; gap: 4px; justify-content: flex-end;">
-            <button id="btn-scroll-unico" class="btn-float" onclick="toggleRolagemGeral(true)" title="Rolagem Música">▶1</button>
-            <button id="btn-scroll" class="btn-float" onclick="toggleRolagemGeral(false)" title="Rolagem Lista Completa">▶T</button>
-        </div>
+    <div id="controls">
+      <button id="auto-btn" onclick="autoComplete()" style="display:none">Auto-completar ✓</button>
+      <button onclick="newGame()">Novo Jogo</button>
     </div>
+  </div>
 
-    <!-- Mini modal do menu sanduíche -->
-    <div id="menu-flutuante" class="menu-flutuante" style="display:none;">
+  <div id="top-area">
+    <div class="pile-slot foundation" id="f0" onclick="clickFoundation(0)"><span class="foundation-label">♠</span></div>
+    <div class="pile-slot foundation" id="f1" onclick="clickFoundation(1)"><span class="foundation-label">♥</span></div>
+    <div class="pile-slot foundation" id="f2" onclick="clickFoundation(2)"><span class="foundation-label">♦</span></div>
+    <div class="pile-slot foundation" id="f3" onclick="clickFoundation(3)"><span class="foundation-label">♣</span></div>
+  </div>
 
-
-        <div class="menu-flutuante-item" onclick="abrirModalAdmin(); fecharMenuFlutuante();">
-            <span class="menu-flutuante-icone">⚙️</span>
-            <span>Gerenciar Listas</span>
-        </div>
-
-        <div class="menu-flutuante-item" onclick="alternarVisibilidadePainelControlesManual(); fecharMenuFlutuante();">
-            <span class="menu-flutuante-icone">🎛️</span>
-            <span>Ocultar/Exibir Controles</span>
-        </div>
-
-        <div class="menu-flutuante-item" onclick="imprimirListaAtiva(); fecharMenuFlutuante();">
-            <span class="menu-flutuante-icone">🖨️</span>
-            <span>Imprimir Lista</span>
-        </div>
-        <div class="menu-flutuante-item" onclick="alternarTemaFundo(); fecharMenuFlutuante();">
-            <span class="menu-flutuante-icone">🌓</span>
-            <span>Alternar Tema</span>
-        </div>
-        <div class="menu-flutuante-item" onclick="abrirModalAtalhos(); fecharMenuFlutuante();">
-            <span class="menu-flutuante-icone">⌨️</span>
-            <span>Atalhos de Teclado</span>
-        </div>
-
-        <div class="menu-flutuante-item" onclick="abrirModalTutorial(); fecharMenuFlutuante();">
-            <span class="menu-flutuante-icone">❓</span>
-            <span>Ajuda</span>
-        </div>
-
-        <div id="item-atualizar-app" class="menu-flutuante-item" style="display:none; border-top: 1px solid var(--border-color); color: var(--success-color);" onclick="forcarAtualizacao(); fecharMenuFlutuante();">
-            <span class="menu-flutuante-icone">🔄</span>
-            <span>Atualização Disponível</span>
-        </div>
-
+  <div id="stock-widget">
+    <div id="stock-widget-col">
+      <div class="pile-slot waste-pile" id="waste"></div>
+      <div class="pile-label">Descarte</div>
     </div>
-
-    <footer class="app-footer">
-        <div class="copyright-text">
-            &copy; 2026 pertencem a gelsavio@gmail.com. Todos os direitos reservados.
-            <button id="btn-atualizar-app" class="btn-float" style="display:none; background:#ef4444;" onclick="forcarAtualizacao()">    🔄 Atualizar App        </button>
-        </div>
-    </footer>
-
-    <div id="toast"></div>
-
-    <!-- Modal: Painel Admin -->
-    <div class="modal-overlay" id="modal-admin-container" onclick="fecharModalAdminExterno(event)">
-        <div class="modal-wrapper">
-            <div class="modal-header">
-                <h3>🛠️ Gerenciador GelCifras</h3>
-                <button class="btn-fechar-modal" onclick="fecharModalAdmin()">&times;</button>
-            </div>
-
-            <div class="admin-section">
-                <h4>⏱️ Configurações de Palco</h4>
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <label style="font-size:12px; font-weight:bold;">Atraso para iniciar rolagem (segundos):</label>
-                    <input type="number" id="input-delay-partida" class="input-text" style="width: 70px; margin:0;" min="0" max="15" value="0" onchange="salvarDelayPartida(this.value)">
-                </div>
-            </div>
-
-            <div class="admin-section">
-                <h4>📁 Criar Nova Lista</h4>
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" id="input-nova-lista" class="input-text" style="margin:0;" placeholder="Ex: Show de Sábado, Forró das Antigas...">
-                    <button class="btn-pequeno" onclick="criarNovaListaUsuario()">Criar</button>
-                </div>
-            </div>
-
-            <div class="admin-section">
-                <h4>🗂️ Gerir Listas</h4>
-                <div style="margin-bottom:6px;display:flex;align-items:center;gap:8px;">
-                    <label style="font-size:12px;font-weight:bold;">Lista:</label>
-                    <select id="seletor-lista-gerenciar" style="flex:1;max-width:100%;background:var(--card-bg);color:var(--text-color);border-color:var(--border-color);"></select>
-                </div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                    <button class="btn-pequeno" style="flex:1;background:#10b981;min-width:80px;" onclick="duplicarLista()">📋 Duplicar</button>
-                    <button class="btn-pequeno" style="flex:1;background:#3b82f6;min-width:80px;" onclick="abrirModalRenomearLista()">✏️ Renomear</button>
-                    <button class="btn-pequeno" style="flex:1;background:#ef4444;min-width:80px;" onclick="excluirLista()">🗑️ Excluir</button>
-                </div>
-            </div>
-
-
-
-            <div class="admin-section">
-                <h4>📂 Importar Repertório Modelo</h4>
-
-                <div style="margin-bottom: 20px;">
-                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 8px;">Biblioteca do App</div>
-
-                    <div class="biblioteca-lista">
-                        <div class="biblioteca-item" onclick="importarBibliotecaFixa('repertorio_missa')" style="cursor: pointer; padding: 10px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center;">
-                            <span class="biblioteca-icone" style="margin-right: 12px;">🙏</span>
-                            <span class="biblioteca-nome" style="flex-grow: 1;">Missa - De pé pela fé</span>
-                            <span class="biblioteca-seta">›</span>
-                        </div>
-
-                        <div class="biblioteca-item" onclick="importarBibliotecaFixa('repertorio_brega')" style="cursor: pointer; padding: 10px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center;">
-                            <span class="biblioteca-icone" style="margin-right: 12px;">🎵</span>
-                            <span class="biblioteca-nome" style="flex-grow: 1;">Brega</span>
-                            <span class="biblioteca-seta">›</span>
-                        </div>
-
-                        <div class="biblioteca-item" onclick="importarBibliotecaFixa('repertorio_rock_nacional')" style="cursor: pointer; padding: 10px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center;">
-                            <span class="biblioteca-icone" style="margin-right: 12px;">🎸</span>
-                            <span class="biblioteca-nome" style="flex-grow: 1;">Rock Nacional</span>
-                            <span class="biblioteca-seta">›</span>
-                        </div>
-
-                        <div class="biblioteca-item" onclick="importarBibliotecaFixa('repertorio_forro_pe_de_serra')" style="cursor: pointer; padding: 10px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center;">
-                            <span class="biblioteca-icone" style="margin-right: 12px;">🪗</span>
-                            <span class="biblioteca-nome" style="flex-grow: 1;">Forró Pé de Serra</span>
-                            <span class="biblioteca-seta">›</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 6px;">Arquivo Local</div>
-                    <label class="btn-import-file" for="input-upload-txt" style="display: block; padding: 10px; border: 1px dashed var(--border-color); text-align: center; cursor: pointer; border-radius: 8px;">          📁 Escolher arquivo .txt          </label>
-                    <input type="file" id="input-upload-txt" accept=".txt,application/json" style="display:none;" onchange="importarArquivoLocal(this)">
-                    <span id="label-arquivo-escolhido" style="display: block; font-size: 11px; color: var(--text-muted); margin-top: 6px;">Nenhum arquivo selecionado</span>
-                </div>
-            </div>
-
-            <div class="admin-section">
-                <h4>💾 Exportar Backup (.txt)</h4>
-                <div class="biblioteca-lista">
-                    <div class="biblioteca-item" onclick="acionarModalInteracaoBackup()">
-                        <span class="biblioteca-icone">📦</span>
-                        <span class="biblioteca-nome">Acervo Completo</span>
-                        <span class="biblioteca-seta">›</span>
-                    </div>
-                    <div class="biblioteca-item" onclick="exportarListaAtivaTxt()">
-                        <span class="biblioteca-icone">🎵</span>
-                        <span id="txt-nome-lista-backup" class="biblioteca-nome">Lista Atual</span>
-                        <span class="biblioteca-seta">›</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div id="waste-widget-col">
+      <div class="pile-slot stock-pile" id="stock" onclick="clickStock()"></div>
+      <div class="pile-label">Maço</div>
     </div>
+  </div>
 
-    <!-- Modal: Opções de Restauração -->
-    <div class="modal-overlay" id="modal-interacao-restore" onclick="if(event.target.id === 'modal-interacao-restore') fecharModalInteracaoRestore()">
-        <div class="modal-wrapper" style="max-width: 450px;">
-            <div class="modal-header">
-                <h3>📥 Como deseja importar os dados?</h3>
-                <button class="btn-fechar-modal" onclick="fecharModalInteracaoRestore()">&times;</button>
-            </div>
-            <p style="font-size:13px; margin:0; color:var(--text-muted);">Selecione o método de injeção dos dados no aparelho:</p>
-            <div class="modal-decision-grid">
-                <button class="btn-decision-card" style="border-color: rgba(248, 113, 113, 0.4);" onclick="ejecutarRestauracaoSubstitutivaGeral()">
-                    <h5>⚠️ Substituir Todo o Acervo</h5>
-                    <p>Limpa completamente a memória atual do aparelho e instala os dados do backup. Use para clonar dispositivos.</p>
-                </button>
-                <button class="btn-decision-card" style="border-color: rgba(16, 185, 129, 0.4);" onclick="executarRestauracaoMescladaAmigavel()">
-                    <h5>➕ Adicionar / Mesclar Músicas</h5>
-                    <p>Mantém seu acervo atual intacto e apenas injeta as músicas novas e setlists que vieram do backup.</p>
-                </button>
-            </div>
-        </div>
-    </div>
+  <div id="tableau-area">
+    <div class="tableau-col" id="col0"></div>
+    <div class="tableau-col" id="col1"></div>
+    <div class="tableau-col" id="col2"></div>
+    <div class="tableau-col" id="col3"></div>
+    <div class="tableau-col" id="col4"></div>
+    <div class="tableau-col" id="col5"></div>
+    <div class="tableau-col" id="col6"></div>
+  </div>
 
-    <div class="modal-overlay" id="modal-prompt-lista" onclick="if(event.target.id === 'modal-prompt-lista') fecharModalPromptLista()">
-        <div class="modal-wrapper" style="max-width: 400px; padding: 18px;">
-            <div class="modal-header" style="margin-bottom: 12px; padding-bottom: 8px;">
-                <h3 id="modal-prompt-titulo">Nome da Lista</h3>
-                <button class="btn-fechar-modal" onclick="fecharModalPromptLista()">&times;</button>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                <input type="hidden" id="modal-prompt-acao">
-                <input type="text" id="modal-prompt-input" class="input-text" style="margin: 0;" placeholder="Introduza o nome da lista...">
-                <button class="btn-sucesso" id="modal-prompt-btn-confirmar" onclick="confirmarAcaoPromptLista()">Confirmar</button>
-            </div>
-        </div>
-    </div>
+</div>
 
-    <!-- Modal: Editar Cifra -->
-    <div class="modal-overlay" id="modal-editar-container" onclick="fecharModalEditarExterno(event)">
-        <div class="modal-wrapper">
-            <div class="modal-header">
-                <h3>✏️ Editar Música / Cifra</h3>
-                <button class="btn-fechar-modal" onclick="fecharModalEditar()">&times;</button>
-            </div>
-            <div class="admin-section" style="margin-bottom:0;">
-                <input type="hidden" id="edit-musica-id">
-                <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">Título da Música:</label>
-                <input type="text" id="edit-musica-titulo" class="input-text">
-                <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px; margin-top:8px;">Artista/Cantor:</label>
-                <input type="text" id="edit-musica-artista" class="input-text">
+<div id="win-overlay">
+  <div id="win-box">
+    <h2>🎉 Você venceu!</h2>
+    <p id="win-stats"></p>
+    <button onclick="newGame()">Jogar Novamente</button>
+  </div>
+</div>
 
-                <!-- tom original -->
-                <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px; margin-top:8px;">Tom Original:</label>
-                <div class="panel-column" style="width: 140px; margin-bottom: 10px;">
-                    <div class="adjustment-row">
-                        <button class="btn-num" onclick="mudarTomModalEditar(-1)">−</button>
-                        <span id="edit-tom-txt" class="num-display" style="min-width: 40px; text-align: center;">C</span>
-                        <button class="btn-num" onclick="mudarTomModalEditar(1)">+</button>
-                    </div>
-                    <input type="hidden" id="edit-musica-tom-original" value="C">
-                </div>
+<div id="drag-ghost"></div>
 
-                <!-- letra e cifra -->
-                <textarea id="edit-musica-letra" rows="12" class="input-text" style="font-family:monospace; font-size:13px; line-height:1.5;"></textarea>
-                <div style="display: flex; gap: 10px; margin-top: 10px;">
-                    <button class="btn-sucesso" style="flex: 2;" onclick="salvarAlteracoesCifraEditada()">Salvar Alterações</button>
-                    <button class="btn-pequeno" style="flex: 1; background: #94a3b8; color: white;" onclick="fecharModalEditar()">Cancelar</button>
-                </div>
-            </div>
-        </div>
-    </div>
+<script src="app.js?v=1.0.0"></script>
+<script>
+  let newWorker;
+  if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+              .then(reg => {
+                  console.log('Service Worker registrado!', reg.scope);
+                  reg.addEventListener('updatefound', () => {
+                      newWorker = reg.installing;
+                      newWorker.addEventListener('statechange', () => {
+                          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                              const itemAtualizar = document.getElementById('item-atualizar-app');
+                              if (itemAtualizar) itemAtualizar.style.display = 'flex';
+                          }
+                      });
+                  });
+              })
+              .catch(err => console.log('Erro ao registrar SW:', err));
+      });
+  }
 
-    <!-- Modal: Tutorial / Ajuda -->
-    <div class="modal-overlay" id="modal-tutorial-container" onclick="fecharModalTutorialExterno(event)">
-        <div class="modal-wrapper" style="max-width: 550px;">
-            <div class="modal-header">
-                <h3>📖 Central de Ajuda & Dicas</h3>
-                <button class="btn-fechar-modal" onclick="fecharModalTutorial()">&times;</button>
-            </div>
-            <div class="admin-section tutorial-text" style="margin-bottom:0; max-height:65vh; overflow-y:auto; padding-right:6px;">
-                <div style="background:var(--sub-panel-bg);border-radius:10px;padding:14px;margin-bottom:4px;">
-                    <p style="margin:0 0 6px 0;font-size:15px;font-weight:800;color:var(--chord-color);">🎸 GelCifras — Seu App de Palco</p>
-                    <p style="margin:0;font-size:13px;line-height:1.6;">O GelCifras reúne todas as cifras do seu repertório em um único lugar, com rolagem automática sincronizada com o andamento de cada música — sem precisar de internet, sem anúncios, sem distrações. Ideal para shows, ensaios e cultos.</p>
-                </div>
-                <h5>1. Rolagem Automática</h5>
-                <p>O grande diferencial do app. Pressione ▶ e todas as músicas da lista vão rolando na tela automaticamente, uma após a outra, sem precisar tocar em nada. Cada música tem sua própria velocidade de rolagem, que você ajusta no campo "Velocidade"
-                    do card. <strong>Dica de palco:</strong> se nenhuma velocidade numérica casar com o ritmo da música, edite a cifra (✏️) e adicione linhas em branco nos refrões longos, solos ou pausas — isso cria respirações naturais na rolagem sem
-                    mexer nos números.</p>
-                <h5>2. Cadastro de Cifras</h5>
-                <p>No painel Admin (⚙️), cole o texto de qualquer cifra com o título na 1ª linha e o nome do cantor na 2ª. O app limpa automaticamente o texto desnecessário e salva no aparelho. Tudo fica armazenado localmente — nada vai para a internet.</p>
-                <h5>3. Montagem de Setlists</h5>
-                <p>Crie uma lista com o nome do show ou evento. Depois clique no ícone de prancheta (📋) no card de cada música para vinculá-la à lista desejada. A lista "Todas as Músicas" é a mestra e sempre fica no topo.</p>
-                <h5>4. Ordenação do Roteiro</h5>
-                <p>Defina a sequência exata que a banda vai tocar. No Admin (⚙️), vá em "Reordenar Sequência do Show", escolha a lista e use as setas 🔼 🔽 para posicionar cada música. A rolagem automática respeitará essa ordem na hora do show.</p>
-                <h5>5. Compartilhando Listas com a Banda</h5>
-                <p>Depois de montar e ajustar o setlist — com os tons certos, as velocidades calibradas e a ordem definida — exporte a lista como arquivo <strong>.txt</strong> (💾 Exportar Backup). Envie esse arquivo pelo WhatsApp, e-mail ou qualquer app
-                    de mensagens para os outros músicos. Eles importam no próprio GelCifras deles e já recebem tudo pronto, exatamente igual ao seu.</p>
-                <h5>6. Diagramas de Acordes</h5>
-                <p>Passe o mouse sobre qualquer acorde na cifra e aparece automaticamente o diagrama de posição no violão. No celular, toque no acorde para ver o diagrama.</p>
-                <h5>7. Transposição de Tom</h5>
-                <p>Use os botões + e − no card de cada música para transpor o tom em tempo real. Os acordes da cifra se atualizam instantaneamente. Para voltar ao tom original, clique em 🔄.</p>
-                <h5>8. Capotraste</h5>
-                <p>Selecione a casa do capo no card da música. O app mostrará quais acordes tocar e em que tom a música vai soar, atualizando a cifra automaticamente.</p>
-                <h5>9. Modo Letra Pura</h5>
-                <p>O botão 🎤 oculta todos os acordes e exibe só a letra, ideal para vocalistas que não precisam ver cifra durante o show.</p>
-                <h5>10. Atalhos de Teclado / Pedal</h5>
-                <p>O app suporta atalhos de teclado compatíveis com pedais Bluetooth. Acesse o menu ☰ → Atalhos de Teclado para ver a lista completa.</p>
-                <h5>11. Segurança dos Dados</h5>
-                <p>O GelCifras funciona 100% offline. Para não perder o repertório ao trocar de celular ou limpar o navegador, exporte regularmente o backup completo (📦 Acervo Completo) e guarde o <strong>.txt</strong> no seu e-mail ou nuvem. <strong>Usuários de iPhone:</strong>                    o Safari pode limpar os dados automaticamente por inatividade — o backup frequente é ainda mais importante.</p>
-                <h5>12. Biblioteca do App</h5>
-                <p>O app já vem com listas prontas de repertório (Brega, Rock Brasil, Pé de Serra) que você pode importar com um toque e começar a usar imediatamente.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal: Diagrama de Acorde (mobile tap) -->
-    <div class="modal-overlay" id="modal-diagrama-container" onclick="if(event.target.id==='modal-diagrama-container') fecharModalDiagrama()">
-        <div class="modal-wrapper" style="max-width:200px;padding:16px;text-align:center;">
-            <div class="modal-header" style="margin-bottom:10px;">
-                <h3 id="modal-diagrama-titulo" style="font-size:15px;">Acorde</h3>
-                <button class="btn-fechar-modal" onclick="fecharModalDiagrama()">&times;</button>
-            </div>
-            <div id="modal-diagrama-svg"></div>
-        </div>
-    </div>
-
-    <!-- Modal: Atalhos de Teclado -->
-    <div class="modal-overlay" id="modal-atalhos-container" onclick="if(event.target.id==='modal-atalhos-container') fecharModalAtalhos()">
-        <div class="modal-wrapper" style="max-width:420px;">
-            <div class="modal-header">
-                <h3>⌨️ Atalhos de Teclado</h3>
-                <button class="btn-fechar-modal" onclick="fecharModalAtalhos()">&times;</button>
-            </div>
-            <div class="admin-section" style="margin-bottom:0;">
-                <table class="tabela-atalhos">
-                    <tr>
-                        <td><kbd>Espaço</kbd></td>
-                        <td>Iniciar / Pausar rolagem</td>
-                    </tr>
-                    <tr>
-                        <td><kbd>→</kbd> / <kbd>PageDown</kbd></td>
-                        <td>Próxima música</td>
-                    </tr>
-                    <tr>
-                        <td><kbd>←</kbd> / <kbd>PageUp</kbd></td>
-                        <td>Música anterior</td>
-                    </tr>
-                    <tr>
-                        <td><kbd>L</kbd></td>
-                        <td>Alternar letra pura / acordes</td>
-                    </tr>
-                    <tr>
-                        <td><kbd>T</kbd></td>
-                        <td>Alternar tema claro / escuro</td>
-                    </tr>
-                    <tr>
-                        <td><kbd>B</kbd></td>
-                        <td>Buscar música</td>
-                    </tr>
-                    <tr>
-                        <td><kbd>Esc</kbd></td>
-                        <td>Fechar modais / Sair da busca</td>
-                    </tr>
-                </table>
-                <p style="font-size:11px;color:var(--text-muted);margin-top:10px;">💡 Compatível com pedais Bluetooth que simulam setas do teclado.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal: Cadastrar Nova Música -->
-    <div class="modal-overlay" id="modal-cadastrar-container" onclick="if(event.target.id==='modal-cadastrar-container') fecharModalCadastrar()">
-        <div class="modal-wrapper" style="max-width:550px;">
-            <div class="modal-header">
-                <h3>🎤 Cadastrar Nova Música</h3>
-                <button class="btn-fechar-modal" onclick="fecharModalCadastrar()">&times;</button>
-            </div>
-            <div class="admin-section" style="margin-bottom:0;">
-                <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px 0;">Cole o texto da cifra abaixo. O título deve estar na 1ª linha e o cantor na 2ª.</p>
-                <textarea id="input-cifra-bruta" rows="12" class="input-text" style="font-family:monospace;font-size:13px;line-height:1.5;" placeholder="Título da Música&#10;Nome do Artista&#10;Tom: C&#10;&#10;(Intro) C Am F G&#10;..."></textarea>
-                <button class="btn-sucesso" onclick="processarESalvarNovaMusica()">Processar e Salvar no Aparelho</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="modal-ordenar-container">
-        <div class="modal-wrapper">
-            <div class="modal-header">
-                <h3>↕️ Reordenar: <span id="titulo-ordem-lista"></span></h3>
-                <button class="btn-fechar-modal" onclick="fecharModalOrdenacao()">&times;</button>
-            </div>
-            <div id="container-lista-ordenacao-novo" style="max-height: 300px; overflow-y: auto;">
-            </div>
-        </div>
-    </div>
-
-    <script src="app.js?v=4.0.6"></script>
-
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(registration => {
-                        console.log('Service Worker registrado com sucesso!', registration.scope);
-                    })
-                    .catch(err => {
-                        console.log('Erro ao registrar Service Worker:', err);
-                    });
-            });
-        }
-    </script>
-
+  function forcarAtualizacao() {
+      if (newWorker) {
+          newWorker.postMessage({ action: 'skipWaiting' });
+      }
+      window.location.reload();
+  }
+</script>
 </body>
-
 </html>

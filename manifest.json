@@ -1,31 +1,14 @@
 {
-    "short_name": "GelCifras",
-    "name": "GelCifras - Gerenciador de Exibição de Cifras em Listas",
-    "version": "4.1.2",
-
+    "short_name": "Paciência",
+    "name": "Paciência - Klondike Solitaire",
+    "version": "1.0.0",
     "icons": [{
         "src": "apple-touch-icon.png",
         "type": "image/png",
         "sizes": "512x512"
     }],
     "start_url": "/index.html",
-    "background_color": "#0f172a",
-    "theme_color": "#1d4ed8",
-    "display": "standalone",
-    "share_target": {
-        "action": "/_share-target",
-        "method": "POST",
-        "enctype": "multipart/form-data",
-        "params": {
-            "title": "title",
-            "text": "text",
-            "files": [{
-                "name": "file",
-                "accept": [
-                    "text/plain",
-                    ".txt"
-                ]
-            }]
-        }
-    }
+    "background_color": "#0d3a17",
+    "theme_color": "#217a35",
+    "display": "standalone"
 }

@@ -1,1206 +1,339 @@
-:root {
-    --bg-color: #f4f6f9;
-    --card-bg: #ffffff;
-    --text-color: #212529;
-    --text-muted: #6c757d;
-    --chord-color: #0056b3;
-    --panel-bg: #f8f9fa;
-    --sub-panel-bg: #e9ecef;
-    --border-color: #e2e8f0;
-    --primary-color: #495057;
-    --success-color: #10b981;
-    --gradient-start: #3b82f6;
-    --gradient-end: #1d4ed8;
-}
-
-[data-theme="bege"] {
-    --bg-color: #f5f0e8;
-    --card-bg: #f7f4ef;
-    --text-color: #3b2f1e;
-    --text-muted: #8a7560;
-    --chord-color: #8b5e3c;
-    --panel-bg: #ede8de;
-    --sub-panel-bg: #e5ddd0;
-    --border-color: #d6cdbf;
-    --primary-color: #7a6a55;
-    --success-color: #6a9e72;
-    --gradient-start: #c9a87c;
-    --gradient-end: #a07850;
-}
-
-[data-theme="dark"] {
-    --bg-color: #000000;
-    --card-bg: #000000;
-    --text-color: #f1f5f9;
-    --text-muted: #94a3b8;
-    --chord-color: #f59e0b;
-    --panel-bg: #334155;
-    --sub-panel-bg: #1e293b;
-    --border-color: #334155;
-    --primary-color: #64748b;
-    --gradient-start: #1e1e2f;
-    --gradient-end: #11111f;
-}
-
-* {
-    box-sizing: border-box;
+/* =========================================================
+   RESET & BASE
+========================================================= */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
 }
 
 body {
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    transition: background 0.3s ease, color 0.3s ease;
-    padding-top: 30px;
-    /* Ajuste este valor até que o título da música apareça sem ser cortado */
-}
-
-.app-header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
-    color: white;
-    padding: 8px 10px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    /* Organiza o conteúdo em coluna para caber tudo */
-    align-items: center;
-    /* Centraliza os itens horizontalmente */
-    gap: 5px;
-    /* Espaçamento entre o título e os seletores */
-}
-
-#app-version-badge {
-    background: rgba(255, 255, 255, 0.2);
-    padding: 1px 6px;
-    border-radius: 4px;
-    font-weight: bold;
-}
-
-#app-version-badge,
-#badge-tempo-show {
-    white-space: nowrap;
-    /* Impede que o texto quebre em duas linhas */
-    display: inline-flex;
-    align-items: center;
-}
-
-.header-content {
-    display: flex;
-    flex-direction: column;
-    /* Empilha os itens verticalmente */
-    width: 100%;
-    max-width: 800px;
-    gap: 5px;
-    align-items: stretch;
-    /* Faz os filhos (seletores/busca) ocuparem a largura total */
-}
-
-.brand-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: 1 1 100%;
-    /* Força o logo e título a ocuparem a largura total da linha superior */
-}
-
-.header-logo {
-    width: 35px;
-    height: 35px;
-    border-radius: 8px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-    object-fit: cover;
-}
-
-.brand-box {
-    /* Mantenha suas propriedades atuais, mas adicione: */
-    transition: max-height 1.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.9s ease, padding 1.2s ease, margin 1.2s ease;
-    opacity: 1;
-    overflow: hidden;
-    max-height: 200px;
-    /* Ajuste conforme a altura real do seu cabeçalho */
-}
-
-.brand-box h1 {
-    margin: 0;
-    font-size: 1.2em;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-    line-height: 1.1;
-}
-
-.brand-box h2 {
-    font-size: 15px;
-    /* Título levemente menor */
-    margin: 0;
-}
-
-.brand-box p {
-    margin: 2px 0 0 0;
-    font-size: 0.8em;
-    opacity: 0.9;
-    font-weight: bold;
-    color: #fcd34d;
-    line-height: 1;
-}
-
-@media (max-width: 480px) {
-    .brand-box p {
-        display: none;
-    }
-}
-
-.selectors-group {
-    display: flex;
-    gap: 5px;
-    /* Removido o flex: 1 para ele não tentar crescer e empurrar o logo */
-    justify-content: flex-end;
-    min-width: 260px;
-    align-items: center;
-    padding: 6px;
-    font-size: 13px;
-}
-
-select {
-    padding: 8px 10px;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    background-color: rgba(255, 255, 255, 0.15);
-    color: white;
-    font-size: 12px;
-    outline: none;
-    font-family: inherit;
-    font-weight: bold;
-    cursor: pointer;
-    flex: 1;
-    max-width: 100%;
-    width: 100%;
-}
-
-select option {
-    background-color: var(--card-bg);
-    color: var(--text-color);
-}
-
-.btn-help-top {
-    background: rgba(255, 255, 255, 0.2);
-    border: none;
-    color: white;
-    font-size: 15px;
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    transition: background 0.2s;
-}
-
-.btn-help-top:hover {
-    background: rgba(255, 255, 255, 0.35);
-}
-
-.container {
-    max-width: 800px;
-    width: 100%;
-    margin: 0 auto;
-    padding: 95px 0 120px 0;
-    flex: 1;
-}
-
-.floating-action-rack {
-    /* Mantenha o que já tem, mas adicione/ajuste isto: */
-    position: fixed;
-    right: 20px;
-    /* Distância da borda direita */
-    bottom: 20px;
-    /* Distância da borda inferior */
-    display: flex;
-    flex-direction: column;
-    /* Empilha os botões */
-    align-items: flex-end;
-    /* Alinha tudo à direita do container */
-    gap: 8px;
-    /* Espaçamento entre botões */
-    z-index: 1000;
-}
-
-
-/* Container do grupo de play que criamos */
-
-.grupo-rolagem {
-    display: flex;
-    flex-direction: row;
-    /* Mantém os botões de play lado a lado */
-    align-items: center;
-    /* Alinhamento vertical */
-    gap: 4px;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: radial-gradient(ellipse at top, #217a35 0%, #145220 50%, #0d3a17 100%);
+  min-height: 100vh;
+  overflow-x: hidden;
 }
+
+/* =========================================================
+   LAYOUT GERAL
+========================================================= */
+#game-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 14px 12px;
+  min-height: 100vh;
+}
 
-.btn-float {
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
-    border: none;
-    background-color: #1e293b;
-    color: white;
-    font-size: 15px;
-    font-weight: bold;
-    cursor: pointer;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-    transition: all 0.2s ease;
-}
-
-.btn-float:hover {
-    filter: brightness(1.2);
-    transform: translateY(-1px);
-}
-
-.btn-float:active {
-    transform: scale(0.95);
-}
-
-.btn-float.active {
-    background-color: var(--success-color);
-    box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
-}
-
-.btn-nav-tracks {
-    background-color: #334155;
-    font-size: 14px;
-}
-
-#btn-theme-toggle {
-    background-color: var(--chord-color);
-}
-
-.cifra-container {
-    background: var(--card-bg);
-    padding: 5px;
-    margin-bottom: 25px;
-    margin-top: 5px !important;
-    scroll-margin-top: 75px;
-    border-top: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
-    width: 100%;
-    /* Adicionamos flex para garantir a ordem vertical correta */
-    display: flex;
-    flex-direction: column;
-}
-
-
-/* Forçamos o título a ser o topo absoluto */
-
-.cifra-container h2 {
-    margin: 0 0 10px 0 !important;
-    order: 1;
-}
-
-
-/* Ajustamos o painel para respeitar o fluxo e ter respiro */
-
-.sub-control-panel {
-    order: 2;
-    /* O painel sempre virá depois do título */
-    display: flex;
-    gap: 14px 8px;
-    background: var(--sub-panel-bg);
-    padding: 12px 8px;
-    border-radius: 12px;
-    margin-bottom: 15px;
-    justify-content: center;
-    align-items: center;
-    flex-wrap: wrap;
-    max-height: 250px;
-    opacity: 1;
-    transform: translateY(0);
-    overflow: hidden;
-    transition: max-height 1.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.9s ease, margin-bottom 1.2s ease, padding 1.2s ease;
-}
-
-
-/* O corpo da cifra fica por último */
-
-.cifra-container pre {
-    order: 3;
-    margin-top: 10px;
-}
-
-.sub-control-panel {
-    transition: opacity 0.9s ease-in-out, visibility 0.9s;
-    opacity: 1;
-    visibility: visible;
-}
-
-.sub-control-panel.hidden {
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    /* Impede cliques quando invisível */
-}
-
-.sub-control-panel.ocultar-dinamico {
-    max-height: 0 !important;
-    opacity: 0 !important;
-    margin-bottom: 0 !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    pointer-events: none;
-    /* Adicionamos margem zero para que, ao ocultar, o corpo da cifra suba suavemente */
-}
-
-.panel-column {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    flex: 1 1 auto;
-    /* Permite que o bloco cresça e se ajuste */
-    min-width: 95px;
-    /* Largura mínima para os botões não se esmagarem */
-}
-
-.sub-txt-label {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-muted);
-    user-select: none;
-}
-
-.adjustment-row {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-}
-
-.btn-num {
-    padding: 4px 8px;
-    font-size: 11px;
-    background-color: var(--sub-panel-bg);
-    color: var(--text-color);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: bold;
-}
-
-.num-display {
-    font-weight: bold;
-    text-align: center;
-    font-size: 12px;
-    color: var(--chord-color);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    padding: 4px 6px;
-    background: var(--card-bg);
-    display: inline-block;
-}
-
-.btn-novo {
-    background-color: var(--chord-color);
-    /* Para destacar como ação principal */
-    color: white;
-}
-
-.btn-reset-tom {
-    background: transparent;
-    border: 1px solid var(--border-color);
-    font-size: 10px;
-    cursor: pointer;
-    padding: 4px 6px;
-    border-radius: 6px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.15s;
-}
-
-.btn-reset-tom:hover {
-    background-color: var(--card-bg);
-    transform: scale(1.05);
-}
-
-.btn-action-card {
-    background-color: transparent;
-    border: 1px solid var(--border-color);
-    font-size: 14px;
-    padding: 4px 8px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.15s;
-    margin: 2px;
-}
-
-.btn-action-card:hover {
-    background-color: var(--card-bg);
-    transform: scale(1.05);
-}
-
-.inline-playlist-panel {
-    background: var(--panel-bg);
-    border: 1px dashed var(--border-color);
-    border-radius: 10px;
-    padding: 10px;
-    margin-bottom: 15px;
-    display: none;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.inline-playlist-panel.active {
-    display: flex;
-}
-
-.inline-check-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-}
-
-.inline-check-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.ocultar-acordes .chord-line {
-    display: none !important;
-}
-
-
-/* Quando o modo cantar estiver ativo */
-
-#setlist-container.ocultar-acordes .chord {
-    display: none !important;
-}
-
-
-/* Ocultar a linha inteira se ela contiver apenas acordes e espaços */
-
-#setlist-container.ocultar-acordes .cifra-container div:has(.chord) {
-    display: none !important;
-}
-
-pre {
-    font-family: 'Courier New', Courier, monospace;
-    line-height: 1.8;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    margin-top: 15px;
-    color: var(--text-color);
-    padding-left: 5px;
-    padding-right: 8px;
-}
-
-.chord {
-    color: var(--chord-color);
-    font-weight: bold;
-    background-color: rgba(59, 130, 246, 0.08);
-    padding: 1px 4px;
-    border-radius: 4px;
-}
-
-[data-theme="dark"] .chord {
-    background-color: rgba(245, 158, 11, 0.12);
-}
-
-[data-theme="bege"] .chord {
-    background-color: rgba(139, 94, 60, 0.1);
-}
-
-#toast {
-    position: fixed;
-    bottom: 25px;
-    left: 20px;
-    background: #1e293b;
-    color: #fff;
-    padding: 12px 24px;
-    border-radius: 12px;
-    font-size: 13px;
-    font-weight: bold;
-    opacity: 0;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-    transition: opacity 0.3s;
-    z-index: 9999;
-    pointer-events: none;
-}
-
-#toast.show {
-    opacity: 1;
-}
-
-.app-footer {
-    background-color: #1e293b;
-    color: #94a3b8;
-    padding: 25px 15px;
-    text-align: center;
-    font-size: 13px;
-    border-top: 1px solid #334155;
-    line-height: 1.6;
-}
-
-.copyright-text {
-    font-size: 12px;
-    opacity: 0.7;
-    margin-top: 5px;
-}
-
-
-/* Estrutura dos Modais */
-
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(15, 23, 42, 0.6);
-    backdrop-filter: blur(4px);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 2000;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
-}
-
-.modal-overlay.active {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.modal-wrapper {
-    background: var(--card-bg);
-    color: var(--text-color);
-    width: 95%;
-    max-width: 650px;
-    padding: 22px;
-    border-radius: 16px;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-    transform: translateY(-20px);
-    transition: transform 0.3s ease;
-    border: 1px solid var(--border-color);
-    max-height: 90vh;
-    overflow-y: auto;
-}
-
-.modal-overlay.active .modal-wrapper {
-    transform: translateY(0);
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 12px;
-}
-
-.modal-header h3 {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 800;
-}
-
-.btn-fechar-modal {
-    background: none;
-    color: var(--text-muted);
-    font-size: 26px;
-    padding: 0 4px;
-    border: none;
-    cursor: pointer;
-    line-height: 1;
-}
-
-.admin-section {
-    border: 1px solid var(--border-color);
-    padding: 15px;
-    border-radius: 12px;
-    background: var(--panel-bg);
-    margin-bottom: 15px;
-}
-
-.admin-section h4 {
-    margin: 0 0 10px 0;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--chord-color);
-}
-
-.input-text {
-    width: 100%;
-    padding: 8px 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    background: var(--card-bg);
-    color: var(--text-color);
-    margin-bottom: 8px;
-    font-family: inherit;
-    font-size: 13px;
-}
-
-.btn-sucesso {
-    background-color: var(--success-color);
-    border-radius: 10px;
-    width: 100%;
-    font-size: 14px;
-    padding: 12px;
-    border: none;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.btn-pequeno {
-    padding: 6px 12px;
-    font-size: 12px;
-    border-radius: 8px;
-    background-color: #2563eb;
-    border: none;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.btn-aviso {
-    background-color: #f59e0b;
-    color: white;
-    padding: 6px 12px;
-    border-radius: 8px;
-    border: none;
-    font-size: 12px;
-    cursor: pointer;
-    font-weight: bold;
-}
-
-.order-item-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: var(--card-bg);
-    padding: 8px 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    margin-bottom: 6px;
-    font-size: 13px;
-    font-weight: bold;
-}
-
-.order-btn-group {
-    display: flex;
-    gap: 4px;
-}
-
-.btn-order-arrow {
-    background: var(--sub-panel-bg);
-    border: none;
-    padding: 4px 8px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-}
-
-.btn-order-arrow:hover {
-    filter: brightness(0.9);
-}
-
-.modal-decision-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-top: 15px;
-}
-
-.btn-decision-card {
-    background: var(--panel-bg);
-    border: 2px solid var(--border-color);
-    padding: 14px;
-    border-radius: 12px;
-    text-align: left;
-    cursor: pointer;
-    color: var(--text-color);
-    transition: all 0.2s ease;
-}
-
-.btn-decision-card:hover {
-    border-color: var(--chord-color);
-    background: var(--sub-panel-bg);
-    transform: translateY(-1px);
-}
-
-.btn-decision-card h5 {
-    margin: 0 0 4px 0;
-    font-size: 14px;
-    font-weight: 800;
-    color: var(--chord-color);
-}
-
-.btn-decision-card p {
-    margin: 0;
-    font-size: 12px;
-    color: var(--text-muted);
-    line-height: 1.4;
-}
-
-.tutorial-text h5 {
-    margin: 14px 0 6px 0;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--chord-color);
-    text-transform: uppercase;
-}
-
-.tutorial-text p,
-.tutorial-text li {
-    font-size: 13px;
-    line-height: 1.5;
-    margin-bottom: 8px;
-    color: var(--text-color);
-}
-
-.tutorial-text ul {
-    padding-left: 20px;
-    margin: 4px 0;
-}
-
-
-/* ── LISTA DA BIBLIOTECA DE REPERTÓRIOS ──────────────────────────── */
-
-.biblioteca-lista {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.biblioteca-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 9px 12px;
-    border-radius: 8px;
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    cursor: pointer;
-    transition: border-color 0.15s, background 0.15s;
-}
-
-.biblioteca-item:hover {
-    border-color: var(--chord-color);
-    background: var(--sub-panel-bg);
-}
-
-.biblioteca-icone {
-    font-size: 16px;
-    width: 22px;
-    text-align: center;
-    flex-shrink: 0;
-}
-
-.biblioteca-nome {
-    flex: 1;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text-color);
-}
-
-.biblioteca-seta {
-    font-size: 18px;
-    color: var(--text-muted);
-    font-weight: 300;
-    line-height: 1;
-}
-
-
-/* ── CAPOTRASTE ──────────────────────────────────────────────────── */
-
-.capo-dica-inline {
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: -0.2px;
-}
-
-.capo-dica-ok {
-    color: var(--success-color);
-}
-
-.capo-dica-aviso {
-    color: var(--chord-color);
-}
-
-
-/* ── BOTÃO DE UPLOAD DE ARQUIVO ──────────────────────────────────── */
-
-.btn-import-file {
-    display: inline-block;
-    padding: 6px 12px;
-    font-size: 12px;
-    border-radius: 8px;
-    background-color: #2563eb;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-    transition: filter 0.2s;
-}
-
-.btn-import-file:hover {
-    filter: brightness(1.15);
-}
-
-
-/* ── TOOLTIP DE ACORDE ───────────────────────────────────────────── */
-
-.chord-tooltip {
-    position: fixed;
-    z-index: 9998;
-    pointer-events: none;
-    opacity: 0;
-    transform: scale(0.92) translateY(4px);
-    transition: opacity 0.15s ease, transform 0.15s ease;
-    filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.22));
-}
-
-.chord-tooltip.visible {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-}
-
-
-/* ── CONTADOR DE MÚSICA ──────────────────────────────────────────── */
-
-.contador-musica {
-    font-size: 11px;
-    font-weight: 800;
-    color: white;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 6px;
-    padding: 4px 8px;
-    white-space: nowrap;
-}
-
-
-/* ── BARRA DE BUSCA ──────────────────────────────────────────────── */
-
-.barra-busca-wrapper {
-    padding: 10px 15px 0 15px;
-    max-width: 800px;
-    margin: 0 auto;
-}
-
-.campo-busca {
-    width: 100%;
-    padding: 10px 14px;
-    border-radius: 10px;
-    border: 2px solid var(--chord-color);
-    background: var(--card-bg);
-    color: var(--text-color);
-    font-size: 14px;
-    font-family: inherit;
-    outline: none;
-    transition: box-shadow 0.2s;
-}
-
-.campo-busca:focus {
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-}
-
-
-/* ── TELA CHEIA ──────────────────────────────────────────────────── */
-
-.modo-tela-cheia .app-header {
-    transform: translateY(-100%);
-    transition: transform 0.3s ease;
-}
-
-.modo-tela-cheia .container {
-    padding-top: 10px;
-}
-
-
-/* ── TABELA DE ATALHOS ───────────────────────────────────────────── */
-
-.tabela-atalhos {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.tabela-atalhos tr {
-    border-bottom: 1px solid var(--border-color);
-}
-
-.tabela-atalhos tr:last-child {
-    border-bottom: none;
-}
-
-.tabela-atalhos td {
-    padding: 8px 6px;
-    font-size: 13px;
-    color: var(--text-color);
-    vertical-align: middle;
-}
-
-.tabela-atalhos td:first-child {
-    width: 160px;
-    white-space: nowrap;
-}
-
-kbd {
-    display: inline-block;
-    padding: 2px 7px;
-    font-size: 11px;
-    font-family: monospace;
-    font-weight: 700;
-    background: var(--sub-panel-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 5px;
-    color: var(--text-color);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-}
-
-
-/* Destacar cards em busca */
-
-.cifra-container.busca-oculto {
-    display: none;
-}
-
-.cifra-container.busca-destaque {
-    border-left: 3px solid var(--chord-color);
-}
-
-
-/* ── MENU FLUTUANTE (SANDUÍCHE) ──────────────────────────────────── */
-
-.btn-menu {
-    background-color: #0f172a;
-    font-size: 18px;
-}
-
-.menu-flutuante {
-    position: fixed;
-    bottom: 80px;
-    right: 15px;
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
-    z-index: 1100;
-    overflow: hidden;
-    min-width: 190px;
-    animation: menuEntrar 0.18s ease;
-}
-
-@keyframes menuEntrar {
-    from {
-        opacity: 0;
-        transform: scale(0.9) translateY(8px);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
-}
-
-.menu-flutuante-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text-color);
-    cursor: pointer;
-    transition: background 0.15s;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.menu-flutuante-item:last-child {
-    border-bottom: none;
-}
-
-.menu-flutuante-item:hover {
-    background: var(--sub-panel-bg);
-}
-
-.menu-flutuante-icone {
-    font-size: 16px;
-    width: 22px;
-    text-align: center;
-    flex-shrink: 0;
-}
-
-
-/* ── PLACAR DE ROLAGEM ───────────────────────────────────────────── */
-
-.placar-rolagem {
-    position: fixed;
-    top: 6px;
-    right: 15px;
-    background: rgba(15, 23, 42, 0.75);
-    color: white;
-    font-size: 11px;
-    font-weight: 800;
-    padding: 3px 10px;
-    border-radius: 12px;
-    z-index: 1001;
-    pointer-events: none;
-    backdrop-filter: blur(6px);
-    letter-spacing: 0.3px;
-    white-space: nowrap;
-    transition: opacity 0.3s ease;
-    max-width: 75vw;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-[data-theme="bege"] .placar-rolagem {
-    background: rgba(80, 55, 30, 0.78);
-}
-
-
-/* ── BARRA DE PROGRESSO DE ROLAGEM ──────────────────────────────── */
-
-.barra-progresso-musica {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 0%;
-    height: 5px;
-    background-color: var(--success-color);
-    z-index: 1005;
-    /* Garante exibição acima de qualquer outro elemento */
-    transition: width 0.1s linear, background-color 0.3s ease;
-    display: none;
-    /* Invisível por padrão, ativa apenas na rolagem */
-}
-
-
-/* Estado de alerta para os últimos 10% da cifra */
-
-.barra-progresso-musica.alerta {
-    background-color: #ef4444 !important;
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
-}
-
-
-/* ── RACK TRANSPARENTE DURANTE ROLAGEM ───────────────────────────── */
-
-.rolagem-ativa .floating-action-rack {
-    opacity: 0.15;
-    transition: opacity 0.3s ease;
-}
-
-.rolagem-ativa .floating-action-rack:hover {
-    opacity: 1;
-}
-
-
-/* ── BOTÕES DE VELOCIDADE RÁPIDA (só durante rolagem) ────────────── */
-
-.btn-vel-rapida {
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
-    border: none;
-    background-color: #dc2626;
-    color: white;
-    font-size: 15px;
-    font-weight: bold;
-    cursor: pointer;
-    display: none;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-    transition: all 0.2s ease;
-}
-
-.rolagem-ativa .btn-vel-rapida {
-    display: flex;
-}
-
-.btn-vel-rapida:hover {
-    filter: brightness(1.3);
-    opacity: 1 !important;
-}
-
-
-/* ── METRÔNOMO VISUAL DE 4 LUZES (FLUTUANTE SEM FUNDO) ────────────── */
-
-.metronome-container {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    position: fixed;
-    /* Ajustado para ficar abaixo do topo e alinhado à direita */
-    top: 30px;
-    /* Ajuste este valor se ficar muito colado no placar */
-    right: 15px;
-    /* 'left' foi trocado por 'right' para alinhar à direita */
-    z-index: 9999;
-    background: transparent;
-    pointer-events: none;
-}
-
-.metronome-light {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: transparent;
-    border: 2px solid #555;
-    /* Borda cinza suave para indicar a posição */
-    transition: background 0.1s;
-}
-
-
-/* Quando acender, apenas muda a cor do fundo do círculo */
-
-#light-1.active,
-#light-3.active {
-    background: #ef4444;
-    /* Vermelho */
-    border-color: #ef4444;
-}
-
-#light-2.active,
-#light-4.active {
-    background: #10b981;
-    /* Verde */
-    border-color: #10b981;
-}
-
-
-/* ── COMPENSAÇÃO DA BARRA DE BUSCA MOBILE ───────────────────────── */
-
-body.busca-ativa .container {
-    padding-top: 155px;
-    transition: padding-top 0.2s ease;
-}
-
-strong {
-    font-weight: 800;
-    /* Força o negrito mesmo se o font-family do 'pre' for Courier */
+#top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#top-bar h1 {
+  color: rgba(255,255,255,0.92);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.brand-section {
+  display: flex;
+  flex-direction: column;
+}
+
+#stats {
+  display: flex;
+  gap: 18px;
+  color: #9dceaa;
+  font-size: 13px;
+}
+
+#stats span { display: flex; align-items: center; gap: 4px; }
+
+#controls { display: flex; gap: 8px; }
+
+#controls button {
+  background: rgba(255,255,255,0.14);
+  border: 0.5px solid rgba(255,255,255,0.32);
+  color: #fff;
+  padding: 5px 14px;
+  border-radius: 7px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+#controls button:hover { background: rgba(255,255,255,0.26); }
+
+#top-area {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+  margin-bottom: 10px;
+  max-width: calc(4 * (100% / 7) + 3 * 7px);
+}
+
+#tableau-area {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 7px;
+}
+
+/* =========================================================
+   PILHAS / SLOTS
+========================================================= */
+.pile-slot {
+  width: 100%;
+  aspect-ratio: 0.69;
+  border: 1.5px dashed rgba(255,255,255,0.24);
+  border-radius: 9px;
+  position: relative;
+  background: rgba(0,0,0,0.12);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.pile-slot.foundation { background: rgba(0,0,0,0.18); }
+
+.foundation-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  opacity: 0.28;
+  pointer-events: none;
+}
+
+.stock-pile:empty::after {
+  content: "↺";
+  color: rgba(255,255,255,0.38);
+  font-size: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.tableau-col {
+  position: relative;
+  min-height: 130px;
+}
+
+/* =========================================================
+   CARTAS
+========================================================= */
+.card {
+  width: 100%;
+  aspect-ratio: 0.69;
+  border-radius: 8px;
+  position: relative;
+  cursor: pointer;
+  border: 0.5px solid rgba(0,0,0,0.22);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.card.face-down {
+  background-color: #1a3a8a;
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255,255,255,0.07) 0px, rgba(255,255,255,0.07) 2px,
+      transparent 2px, transparent 8px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255,255,255,0.07) 0px, rgba(255,255,255,0.07) 2px,
+      transparent 2px, transparent 8px
+    );
+  border: 2px solid #1a3a8a;
+  box-shadow: inset 0 0 0 3px rgba(255,255,255,0.12);
+}
+
+.card.face-up {
+  background: #fefefe;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 4px 5px;
+}
+
+.card.face-up.red  { color: #c0392b; }
+.card.face-up.black { color: #111; }
+
+.card-corner-top {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.card-suit-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 36px;
+  opacity: 0.13;
+  pointer-events: none;
+}
+
+.card-corner-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+  font-size: 16px;
+  font-weight: 800;
+  transform: rotate(180deg);
+}
+
+.card.selected {
+  box-shadow: 0 0 0 2.5px #FFD700, 0 4px 14px rgba(255,215,0,0.55);
+  transform: translateY(-4px);
+  z-index: 200 !important;
+}
+
+.tableau-card {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
+.tableau-card.face-down { cursor: default; }
+
+/* =========================================================
+   MAÇO + DESCARTE FLUTUANTE
+========================================================= */
+#stock-widget {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  z-index: 500;
+  background: rgba(0,0,0,0.25);
+  padding: 10px;
+  border-radius: 14px;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+#stock-widget .pile-slot {
+  width: 72px;
+  flex-shrink: 0;
+}
+
+#stock-widget .pile-label {
+  text-align: center;
+  color: rgba(255,255,255,0.5);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+#stock-widget-col, #waste-widget-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* =========================================================
+   OVERLAY DE VITÓRIA
+========================================================= */
+#win-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.72);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+#win-overlay.show { display: flex; }
+
+#win-box {
+  background: #fff;
+  border-radius: 18px;
+  padding: 36px 44px;
+  text-align: center;
+  max-width: 340px;
+  animation: pop-in 0.3s ease;
+}
+
+@keyframes pop-in {
+  from { transform: scale(0.8); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+#win-box h2 { font-size: 26px; font-weight: 600; color: #145220; margin-bottom: 8px; }
+#win-box p  { color: #555; font-size: 14px; margin-bottom: 22px; }
+
+#win-box button {
+  background: #145220;
+  color: #fff;
+  border: none;
+  padding: 11px 30px;
+  border-radius: 9px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+#win-box button:hover { background: #0e3a17; }
+
+/* =========================================================
+   DRAG & DROP VISUALS
+========================================================= */
+#drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  display: none;
+  flex-direction: column;
+  width: 80px;
+  filter: drop-shadow(0 8px 24px rgba(0,0,0,0.55));
+  transform-origin: top left;
+}
+
+#drag-ghost .card {
+  width: 80px;
+  height: auto;
+  min-height: 110px;
+  position: relative;
+  margin-top: -70px;
+  border-radius: 8px;
+}
+
+#drag-ghost .card:first-child { margin-top: 0; }
+
+.drop-target-valid {
+  outline: 2.5px solid #FFD700 !important;
+  outline-offset: 2px;
+  background: rgba(255, 215, 0, 0.12) !important;
+}
+
+.dragging-source {
+  opacity: 0.35 !important;
+}
+
+/* =========================================================
+   RESPONSIVIDADE
+========================================================= */
+@media (max-width: 560px) {
+  .card-corner-top, .card-corner-bottom { font-size: 12px; }
+  .card-suit-center { font-size: 24px; }
+  #top-bar h1 { font-size: 14px; }
+  #stock-widget { bottom: 10px; right: 10px; padding: 7px; gap: 6px; }
+  #stock-widget .pile-slot { width: 52px; }
 }
