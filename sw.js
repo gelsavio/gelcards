@@ -2,12 +2,12 @@
 const CACHE_NAME = 'pacienca-solitaire-cache-v100';
 
 const ASSETS_TO_CACHE = [
-    '/',
-    '/index.html',
-    '/style.css',
-    '/app.js',
-    '/manifest.json',
-    '/apple-touch-icon.png'
+    './', // O ponto garante a raiz da pasta atual no GitHub Pages
+    'index.html',
+    'style.css',
+    'app.js',
+    'manifest.json',
+    'apple-touch-icon.png'
 ];
 
 self.addEventListener('install', event => {

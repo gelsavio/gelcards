@@ -1,103 +1,112 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Paciência – Klondike Solitaire</title>
-  <link rel="manifest" href="manifest.json">
-  <link rel="shortcut icon" href="apple-touch-icon.png" type="image/png">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Paciência – Klondike Solitaire</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="shortcut icon" href="apple-touch-icon.png" type="image/png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
-<div id="game-container">
+    <div id="game-container">
 
-  <div id="top-bar">
-    <div class="brand-section">
-      <h1>♠ Paciência</h1>
-      <div id="item-atualizar-app" style="display:none; background:#ef4444; color:white; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; align-items:center; margin-top:4px;" onclick="forcarAtualizacao()">
-        🔄 Nova versão disponível! Clique para atualizar
-      </div>
+        <div id="top-bar">
+            <div class="brand-section">
+                <h1>♠ Paciência</h1>
+                <div id="item-atualizar-app" style="display:none; background:#ef4444; color:white; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; align-items:center; margin-top:4px;" onclick="forcarAtualizacao()">
+                    🔄 Nova versão disponível! Clique para atualizar
+                </div>
+            </div>
+            <div id="stats">
+                <span>⏱ <span id="timer">00:00</span></span>
+                <span>🃏 <span id="move-count">0</span> mov.</span>
+            </div>
+            <div id="controls">
+                <button id="auto-btn" onclick="autoComplete()" style="display:none">Auto-completar ✓</button>
+                <button onclick="newGame()">Novo Jogo</button>
+            </div>
+        </div>
+
+        <div id="top-area">
+            <div class="pile-slot foundation" id="f0" onclick="clickFoundation(0)"><span class="foundation-label">♠</span></div>
+            <div class="pile-slot foundation" id="f1" onclick="clickFoundation(1)"><span class="foundation-label">♥</span></div>
+            <div class="pile-slot foundation" id="f2" onclick="clickFoundation(2)"><span class="foundation-label">♦</span></div>
+            <div class="pile-slot foundation" id="f3" onclick="clickFoundation(3)"><span class="foundation-label">♣</span></div>
+        </div>
+
+        <div id="stock-widget">
+            <div id="stock-widget-col">
+                <div class="pile-slot waste-pile" id="waste"></div>
+                <div class="pile-label">Descarte</div>
+            </div>
+            <div id="waste-widget-col">
+                <div class="pile-slot stock-pile" id="stock" onclick="clickStock()"></div>
+                <div class="pile-label">Maço</div>
+            </div>
+        </div>
+
+        <div id="tableau-area">
+            <div class="tableau-col" id="col0"></div>
+            <div class="tableau-col" id="col1"></div>
+            <div class="tableau-col" id="col2"></div>
+            <div class="tableau-col" id="col3"></div>
+            <div class="tableau-col" id="col4"></div>
+            <div class="tableau-col" id="col5"></div>
+            <div class="tableau-col" id="col6"></div>
+        </div>
+
     </div>
-    <div id="stats">
-      <span>⏱ <span id="timer">00:00</span></span>
-      <span>🃏 <span id="move-count">0</span> mov.</span>
+
+    <div id="win-overlay">
+        <div id="win-box">
+            <h2>🎉 Você venceu!</h2>
+            <p id="win-stats"></p>
+            <button onclick="newGame()">Jogar Novamente</button>
+        </div>
     </div>
-    <div id="controls">
-      <button id="auto-btn" onclick="autoComplete()" style="display:none">Auto-completar ✓</button>
-      <button onclick="newGame()">Novo Jogo</button>
-    </div>
-  </div>
 
-  <div id="top-area">
-    <div class="pile-slot foundation" id="f0" onclick="clickFoundation(0)"><span class="foundation-label">♠</span></div>
-    <div class="pile-slot foundation" id="f1" onclick="clickFoundation(1)"><span class="foundation-label">♥</span></div>
-    <div class="pile-slot foundation" id="f2" onclick="clickFoundation(2)"><span class="foundation-label">♦</span></div>
-    <div class="pile-slot foundation" id="f3" onclick="clickFoundation(3)"><span class="foundation-label">♣</span></div>
-  </div>
+    <div id="drag-ghost"></div>
 
-  <div id="stock-widget">
-    <div id="stock-widget-col">
-      <div class="pile-slot waste-pile" id="waste"></div>
-      <div class="pile-label">Descarte</div>
-    </div>
-    <div id="waste-widget-col">
-      <div class="pile-slot stock-pile" id="stock" onclick="clickStock()"></div>
-      <div class="pile-label">Maço</div>
-    </div>
-  </div>
+    <script src="app.js?v=1.0.0"></script>
+    <script>
+        let newWorker;
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // Ajustado de '/sw.js' para 'sw.js' para funcionar corretamente no GitHub Pages
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => {
+                        console.log('Service Worker registrado!', reg.scope);
+                        reg.addEventListener('updatefound', () => {
+                            newWorker = reg.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    const itemAtualizar = document.getElementById('item-atualizar-app');
+                                    if (itemAtualizar) itemAtualizar.style.display = 'flex';
+                                }
+                            });
+                        });
+                    })
+                    .catch(err => console.log('Erro ao registrar SW:', err));
+            });
+        }
 
-  <div id="tableau-area">
-    <div class="tableau-col" id="col0"></div>
-    <div class="tableau-col" id="col1"></div>
-    <div class="tableau-col" id="col2"></div>
-    <div class="tableau-col" id="col3"></div>
-    <div class="tableau-col" id="col4"></div>
-    <div class="tableau-col" id="col5"></div>
-    <div class="tableau-col" id="col6"></div>
-  </div>
+        function forcarAtualizacao() {
+            if (newWorker) {
+                newWorker.postMessage({
+                    action: 'skipWaiting'
+                });
+            }
+            window.location.reload();
+        }
+    </script>
 
-</div>
-
-<div id="win-overlay">
-  <div id="win-box">
-    <h2>🎉 Você venceu!</h2>
-    <p id="win-stats"></p>
-    <button onclick="newGame()">Jogar Novamente</button>
-  </div>
-</div>
-
-<div id="drag-ghost"></div>
-
-<script src="app.js?v=1.0.0"></script>
-<script>
-  let newWorker;
-  if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-              .then(reg => {
-                  console.log('Service Worker registrado!', reg.scope);
-                  reg.addEventListener('updatefound', () => {
-                      newWorker = reg.installing;
-                      newWorker.addEventListener('statechange', () => {
-                          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                              const itemAtualizar = document.getElementById('item-atualizar-app');
-                              if (itemAtualizar) itemAtualizar.style.display = 'flex';
-                          }
-                      });
-                  });
-              })
-              .catch(err => console.log('Erro ao registrar SW:', err));
-      });
-  }
-
-  function forcarAtualizacao() {
-      if (newWorker) {
-          newWorker.postMessage({ action: 'skipWaiting' });
-      }
-      window.location.reload();
-  }
-</script>
+    function forcarAtualizacao() { if (newWorker) { newWorker.postMessage({ action: 'skipWaiting' }); } window.location.reload(); }
+    </script>
 </body>
+
 </html>
