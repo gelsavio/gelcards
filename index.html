@@ -15,6 +15,7 @@
 
     <div id="game-container">
 
+        <!-- Barra superior -->
         <div id="top-bar">
             <div class="brand-section">
                 <h1>♠ Paciência</h1>
@@ -25,31 +26,40 @@
             <div id="stats">
                 <span>⏱ <span id="timer">00:00</span></span>
                 <span>🃏 <span id="move-count">0</span> mov.</span>
+                <span>🏆 Vitórias: <span id="win-count">0</span></span>
             </div>
             <div id="controls">
+                <button onclick="obterDica()">💡 Dica</button>
+                <button onclick="desfazerJogada()">↩ Voltar</button>
                 <button id="auto-btn" onclick="autoComplete()" style="display:none">Auto-completar ✓</button>
                 <button onclick="newGame()">Novo Jogo</button>
             </div>
         </div>
 
-        <div id="top-area">
-            <div class="pile-slot foundation" id="f0" onclick="clickFoundation(0)"><span class="foundation-label">♠</span></div>
-            <div class="pile-slot foundation" id="f1" onclick="clickFoundation(1)"><span class="foundation-label">♥</span></div>
-            <div class="pile-slot foundation" id="f2" onclick="clickFoundation(2)"><span class="foundation-label">♦</span></div>
-            <div class="pile-slot foundation" id="f3" onclick="clickFoundation(3)"><span class="foundation-label">♣</span></div>
+        <!-- Área do Topo Reorganizada -->
+        <div id="board-top-wrapper">
+            <!-- 4 Fundações (Lado Esquerdo) -->
+            <div id="foundations-area">
+                <div class="pile-slot foundation" id="f0" onclick="clickFoundation(0)"><span class="foundation-label">♠</span></div>
+                <div class="pile-slot foundation" id="f1" onclick="clickFoundation(1)"><span class="foundation-label">♥</span></div>
+                <div class="pile-slot foundation" id="f2" onclick="clickFoundation(2)"><span class="foundation-label">♦</span></div>
+                <div class="pile-slot foundation" id="f3" onclick="clickFoundation(3)"><span class="foundation-label">♣</span></div>
+            </div>
+
+            <!-- Maço + Descarte (Agora no Lado Superior Direito) -->
+            <div id="stock-area-top">
+                <div class="widget-col">
+                    <div class="pile-slot waste-pile" id="waste"></div>
+                    <div class="pile-label">Descarte</div>
+                </div>
+                <div class="widget-col">
+                    <div class="pile-slot stock-pile" id="stock" onclick="clickStock()"></div>
+                    <div class="pile-label">Maço</div>
+                </div>
+            </div>
         </div>
 
-        <div id="stock-widget">
-            <div id="stock-widget-col">
-                <div class="pile-slot waste-pile" id="waste"></div>
-                <div class="pile-label">Descarte</div>
-            </div>
-            <div id="waste-widget-col">
-                <div class="pile-slot stock-pile" id="stock" onclick="clickStock()"></div>
-                <div class="pile-label">Maço</div>
-            </div>
-        </div>
-
+        <!-- Tableau: 7 colunas -->
         <div id="tableau-area">
             <div class="tableau-col" id="col0"></div>
             <div class="tableau-col" id="col1"></div>
@@ -62,6 +72,7 @@
 
     </div>
 
+    <!-- Overlay de vitória -->
     <div id="win-overlay">
         <div id="win-box">
             <h2>🎉 Você venceu!</h2>
@@ -72,12 +83,11 @@
 
     <div id="drag-ghost"></div>
 
-    <script src="app.js?v=1.0.0"></script>
+    <script src="app.js?v=1.1.0"></script>
     <script>
         let newWorker;
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                // Ajustado de '/sw.js' para 'sw.js' para funcionar corretamente no GitHub Pages
                 navigator.serviceWorker.register('sw.js')
                     .then(reg => {
                         console.log('Service Worker registrado!', reg.scope);
@@ -103,9 +113,6 @@
             }
             window.location.reload();
         }
-    </script>
-
-    function forcarAtualizacao() { if (newWorker) { newWorker.postMessage({ action: 'skipWaiting' }); } window.location.reload(); }
     </script>
 </body>
 
