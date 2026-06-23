@@ -167,6 +167,11 @@ body {
     min-height: 130px;
 }
 
+
+/* =========================================================
+   CARTAS COM CENTRO AMPLIADO
+========================================================= */
+
 .card {
     width: 100%;
     aspect-ratio: 0.69;
@@ -199,21 +204,15 @@ body {
     color: #111;
 }
 
+
+/* Cantos discretos para dar espaço ao centro */
+
 .card-corner-top {
     display: flex;
     flex-direction: column;
     line-height: 1.1;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 800;
-}
-
-.card-suit-center {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 34px;
-    opacity: 0.13;
 }
 
 .card-corner-bottom {
@@ -221,9 +220,73 @@ body {
     flex-direction: column;
     align-items: flex-end;
     line-height: 1.1;
-    font-size: 15px;
+    font-size: 13px;
     font-weight: 800;
     transform: rotate(180deg);
+}
+
+
+/* Elemento Central Grande e Centralizado (Ocupando 60% da carta) */
+
+.card-center-large {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    line-height: 0.85;
+    pointer-events: none;
+    text-align: center;
+    width: 100%;
+    height: 60%;
+}
+
+.card-center-value {
+    font-size: 5.5vw;
+    font-weight: 900;
+    letter-spacing: -2px;
+}
+
+.card-center-suit {
+    font-size: 9.5vw;
+    margin-top: -5px;
+}
+
+
+/* CORREÇÃO: Escalonamento real preenchendo os 60% visíveis nos monitores */
+
+@media (min-width: 960px) {
+    .card-center-value {
+        font-size: 46px;
+        /* Aumentado de 34px para dar presença real */
+    }
+    .card-center-suit {
+        font-size: 78px;
+        /* Aumentado de 58px para ficar gigante no meio */
+    }
+}
+
+
+/* Trava de segurança para telas muito pequenas (celulares compactos) */
+
+@media (max-width: 480px) {
+    .card-center-value {
+        font-size: 24px;
+    }
+    .card-center-suit {
+        font-size: 42px;
+    }
+}
+
+
+/* Oculta os elementos centrais em cartas empilhadas no Tableau para evitar colisões visuais */
+
+.card-stacked-hidden .card-center-large {
+    display: none !important;
 }
 
 .card.selected {

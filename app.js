@@ -172,8 +172,10 @@ function renderWaste() {
     div.innerHTML = faceHTML(c);
 
     // MODIFICAÇÃO 3: Vinculado o disparador de clique rápido / viagem automática
-    div.addEventListener('click', e => { e.stopPropagation();
-        tratarCliqueCard('waste', null, null); });
+    div.addEventListener('click', e => {
+        e.stopPropagation();
+        tratarCliqueCard('waste', null, null);
+    });
     attachDragHandlers(div, { src: 'waste', cards: [c] });
 
     el.appendChild(div);
@@ -194,8 +196,10 @@ function renderFoundation(i) {
     div.className = `card face-up ${cls}`;
 
     // MODIFICAÇÃO 3: Permite clicar em cartas da fundação para voltarem ou mudarem de lugar
-    div.addEventListener('click', e => { e.stopPropagation();
-        tratarCliqueCard('foundation', i, null); });
+    div.addEventListener('click', e => {
+        e.stopPropagation();
+        tratarCliqueCard('foundation', i, null);
+    });
     div.innerHTML = faceHTML(c);
     el.appendChild(div);
 }
@@ -230,13 +234,18 @@ function renderTableau(col) {
         } else {
             const cls = isRed(card.suit) ? 'red' : 'black';
             cardDiv.id = `card-tableau-${col}-${idx}`;
-            cardDiv.className = `card face-up ${cls}${isSel ? ' selected' : ''}`;
+
+            // A MÁGICA TÁTICA: Se a carta não for a última da coluna, esconde o centro grande para não encavalar nos cantos da carta de cima
+            const stackedClass = isLast ? '' : ' card-stacked-hidden';
+
+            cardDiv.className = `card face-up ${cls}${isSel ? ' selected' : ''}${stackedClass}`;
             cardDiv.style.height = isLast ? '100%' : '115px';
             cardDiv.innerHTML = faceHTML(card);
 
-            // MODIFICAÇÃO 3: Vinculado clique de viagem inteligente nas colunas
-            cardDiv.addEventListener('click', e => { e.stopPropagation();
-                tratarCliqueCard('tableau', col, idx); });
+            cardDiv.addEventListener('click', e => {
+                e.stopPropagation();
+                tratarCliqueCard('tableau', col, idx);
+            });
 
             attachDragHandlers(cardDiv, {
                 src: 'tableau',
@@ -249,18 +258,24 @@ function renderTableau(col) {
         div.appendChild(cardDiv);
         el.appendChild(div);
         top += card.faceUp ? OFFSET_UP : OFFSET_DOWN;
-    });
+    }); // CORREÇÃO: Chave de fechamento do loop forEach reinserida corretamente
 
     el.onclick = () => { if (!cards.length) clickTableauEmpty(col); };
 }
 
+/** HTML interno de uma carta virada para cima com número e naipe gigantes no centro */
 function faceHTML(card) {
+    const valorCentral = card.value === '10' ? '10' : card.value;
+
     return `
     <div class="card-corner-top">
       <div>${card.value}</div>
       <div>${card.suit}</div>
     </div>
-    <div class="card-suit-center">${card.suit}</div>
+    <div class="card-center-large">
+      <div class="card-center-value">${valorCentral}</div>
+      <div class="card-center-suit">${card.suit}</div>
+    </div>
     <div class="card-corner-bottom">
       <div>${card.value}</div>
       <div>${card.suit}</div>
@@ -302,7 +317,7 @@ function tratarCliqueCard(src, identifier, idx) {
 
     // 2. Tenta mandar para as colunas do Tableau
     for (let col = 0; col < 7; col++) {
-        if (src === 'tableau' && identifier === col) continue; // evita mover pra mesma coluna
+        if (src === 'tableau' && identifier === col) continue;
         if (canMoveToTableau(cardMover, col)) {
             saveState();
             executarRemocaoOrigem(src, identifier, idx);
@@ -333,7 +348,6 @@ function finalizarAcaoMovimento() {
 // MODIFICAÇÃO 4: SISTEMA ANALISADOR DE DICAS INTELECTUAL
 // =================================================================
 function obterDica() {
-    // 1. Tenta achar movimentos do Tableau para as Fundações
     for (let col = 0; col < 7; col++) {
         if (!tableau[col].length) continue;
         const c = tableau[col][tableau[col].length - 1];
@@ -345,7 +359,6 @@ function obterDica() {
         }
     }
 
-    // 2. Tenta achar movimentos do Descarte para as Fundações
     if (waste.length) {
         const c = waste[waste.length - 1];
         for (let fi = 0; fi < 4; fi++) {
@@ -356,12 +369,10 @@ function obterDica() {
         }
     }
 
-    // 3. Tenta achar movimentos entre colunas do Tableau (incluindo grupos)
     for (let colOrigem = 0; colOrigem < 7; colOrigem++) {
         const tc = tableau[colOrigem];
         for (let idx = 0; idx < tc.length; idx++) {
             if (!tc[idx].faceUp) continue;
-            // Evita sugerir mover um Rei que já está no topo de uma coluna vazia
             if (idx === 0 && tc[idx].value === 'K') continue;
 
             for (let colDestino = 0; colDestino < 7; colDestino++) {
@@ -374,7 +385,6 @@ function obterDica() {
         }
     }
 
-    // 4. Tenta achar movimentos do Descarte para o Tableau
     if (waste.length) {
         const c = waste[waste.length - 1];
         for (let col = 0; col < 7; col++) {
@@ -385,7 +395,6 @@ function obterDica() {
         }
     }
 
-    // 5. Se não houver jogadas na mesa, pisca o Maço de compras
     destacarElementoDica('stock');
 }
 
@@ -393,7 +402,7 @@ function destacarElementoDica(idElemento) {
     const el = document.getElementById(idElemento);
     if (!el) return;
     el.classList.remove('hint-highlight');
-    void el.offsetWidth; // truque do reflow para resetar animação CSS
+    void el.offsetWidth;
     el.classList.add('hint-highlight');
     setTimeout(() => el.classList.remove('hint-highlight'), 1600);
 }
@@ -462,15 +471,17 @@ function finishDrag(clientX, clientY) {
     const target = (wasMoved && clientX !== null) ? getDropTarget(clientX, clientY) : null;
 
     if (drag.sourceEl) drag.sourceEl.style.opacity = '';
-    if (ghostEl) { ghostEl.style.display = 'none';
-        ghostEl.innerHTML = ''; }
+    if (ghostEl) {
+        ghostEl.style.display = 'none';
+        ghostEl.innerHTML = '';
+    }
     clearDropHighlights();
 
     const dragData = { src: drag.src, col: drag.col, startIdx: drag.startIdx, cards: drag.cards };
     resetDragState();
 
     if (wasMoved && target) {
-        saveState(); // Salva estado para o desfazer antes de aplicar o arrastão
+        saveState();
         selected = dragData;
         if (target.type === 'foundation') placeOnFoundation(target.fi);
         else if (target.type === 'tableau') placeOnTableau(target.col);
@@ -606,7 +617,6 @@ function flipLastCard(col) {
     const tc = tableau[col];
     if (tc.length > 0 && !tc[tc.length - 1].faceUp) {
         tc[tc.length - 1].faceUp = true;
-        // Ganhos futuros de pontos por abrir cartas podem ser inseridos aqui
     }
 }
 
@@ -638,7 +648,7 @@ function checkWin() {
 
     clearInterval(timerInterval);
     gameWon = true;
-    salvarNovaVitoria(); // Grava a vitória localmente
+    salvarNovaVitoria();
 
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
