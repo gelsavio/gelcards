@@ -14,8 +14,6 @@
 <body>
 
     <div id="game-container">
-
-        <!-- Barra superior -->
         <div id="top-bar">
             <div class="brand-section">
                 <h1>♠ Paciência</h1>
@@ -27,18 +25,18 @@
                 <span>⏱ <span id="timer">00:00</span></span>
                 <span>🃏 <span id="move-count">0</span> mov.</span>
                 <span>🏆 Vitórias: <span id="win-count">0</span></span>
+                <span>💀 Derrotas: <span id="loss-count">0</span></span>
             </div>
             <div id="controls">
                 <button onclick="obterDica()">💡 Dica</button>
                 <button onclick="desfazerJogada()">↩ Voltar</button>
+                <button onclick="pedirRedistribuicao()">🔀 Misturar</button>
                 <button id="auto-btn" onclick="autoComplete()" style="display:none">Auto-completar ✓</button>
-                <button onclick="newGame()">Novo Jogo</button>
+                <button onclick="pedirNovoJogo()">Novo Jogo</button>
             </div>
         </div>
 
-        <!-- Área do Topo Reorganizada -->
         <div id="board-top-wrapper">
-            <!-- 4 Fundações (Lado Esquerdo) -->
             <div id="foundations-area">
                 <div class="pile-slot foundation" id="f0" onclick="clickFoundation(0)"><span class="foundation-label">♠</span></div>
                 <div class="pile-slot foundation" id="f1" onclick="clickFoundation(1)"><span class="foundation-label">♥</span></div>
@@ -46,7 +44,6 @@
                 <div class="pile-slot foundation" id="f3" onclick="clickFoundation(3)"><span class="foundation-label">♣</span></div>
             </div>
 
-            <!-- Maço + Descarte (Agora no Lado Superior Direito) -->
             <div id="stock-area-top">
                 <div class="widget-col">
                     <div class="pile-slot waste-pile" id="waste"></div>
@@ -59,7 +56,6 @@
             </div>
         </div>
 
-        <!-- Tableau: 7 colunas -->
         <div id="tableau-area">
             <div class="tableau-col" id="col0"></div>
             <div class="tableau-col" id="col1"></div>
@@ -69,28 +65,38 @@
             <div class="tableau-col" id="col5"></div>
             <div class="tableau-col" id="col6"></div>
         </div>
-
     </div>
 
-    <!-- Overlay de vitória -->
-    <div id="win-overlay">
-        <div id="win-box">
+    <div id="toast-msg"></div>
+
+    <div id="confirm-overlay" class="modal-overlay">
+        <div class="modal-box">
+            <h2 id="confirm-title">Atenção</h2>
+            <p id="confirm-msg"></p>
+            <div class="btn-group">
+                <button class="btn-modal btn-yes" onclick="executarConfirmacao()">Sim, tenho certeza</button>
+                <button class="btn-modal btn-no" onclick="fecharConfirmacao()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="win-overlay" class="modal-overlay">
+        <div class="modal-box">
             <h2>🎉 Você venceu!</h2>
             <p id="win-stats"></p>
-            <button onclick="newGame()">Jogar Novamente</button>
+            <button class="btn-modal btn-yes" style="width:100%; background:#145220" onclick="newGame()">Jogar Novamente</button>
         </div>
     </div>
 
     <div id="drag-ghost"></div>
 
-    <script src="app.js?v=1.1.0"></script>
+    <script src="app.js?v=1.2.0"></script>
     <script>
         let newWorker;
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
                     .then(reg => {
-                        console.log('Service Worker registrado!', reg.scope);
                         reg.addEventListener('updatefound', () => {
                             newWorker = reg.installing;
                             newWorker.addEventListener('statechange', () => {
@@ -100,17 +106,14 @@
                                 }
                             });
                         });
-                    })
-                    .catch(err => console.log('Erro ao registrar SW:', err));
+                    });
             });
         }
 
         function forcarAtualizacao() {
-            if (newWorker) {
-                newWorker.postMessage({
-                    action: 'skipWaiting'
-                });
-            }
+            if (newWorker) newWorker.postMessage({
+                action: 'skipWaiting'
+            });
             window.location.reload();
         }
     </script>

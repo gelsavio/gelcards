@@ -1,5 +1,5 @@
 /* =============================================================
-   KLONDIKE SOLITAIRE PWA ENGINE — COMPACT RECONSTRUCTION
+   KLONDIKE SOLITAIRE PWA ENGINE — COM AUTO-SAVE 
 ============================================================= */
 
 const SUITS = ['♠', '♥', '♦', '♣'];
@@ -25,11 +25,7 @@ let moves = 0;
 let seconds = 0;
 let timerInterval = null;
 let gameWon = false;
-
-// MODIFICAÇÃO 5: Ganchos para futura contagem de pontos inseridos no objeto de estado
 let score = 0;
-
-// MODIFICAÇÃO 2: Histórico para o botão de desfazer jogadas
 let historyStack = [];
 
 let drag = {
@@ -59,7 +55,64 @@ function shuffle(arr) {
     return arr;
 }
 
-// MODIFICAÇÃO 2: Mecanismo de clonagem profunda para gravação do histórico histórico
+// =================================================================
+// MOTOR DE AUTO-SAVE (IMPEDE A TRAPAÇA DO F5)
+// =================================================================
+function salvarEstadoAtual() {
+    if (gameWon) return; // Não salva se o jogo já acabou
+    const state = {
+        stock,
+        waste,
+        foundations,
+        tableau,
+        moves,
+        seconds,
+        score,
+        historyStack,
+        gameWon
+    };
+    localStorage.setItem('solitaire_saved_game', JSON.stringify(state));
+}
+
+function carregarOuIniciarJogo() {
+    const saved = localStorage.getItem('solitaire_saved_game');
+    if (saved) {
+        try {
+            const state = JSON.parse(saved);
+            // Remonta o tabuleiro exatamente como estava antes do F5
+            stock = state.stock;
+            waste = state.waste;
+            foundations = state.foundations;
+            tableau = state.tableau;
+            moves = state.moves;
+            seconds = state.seconds;
+            score = state.score || 0;
+            historyStack = state.historyStack || [];
+            gameWon = state.gameWon || false;
+
+            atualizarDisplayEstatisticas();
+            document.getElementById('move-count').textContent = moves;
+
+            // Retoma o cronômetro
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                seconds++;
+                const m = Math.floor(seconds / 60);
+                const s = seconds % 60;
+                document.getElementById('timer').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+                salvarEstadoAtual(); // Salva o tempo a cada segundo
+            }, 1000);
+
+            render();
+            return; // Interrompe para não gerar novo jogo
+        } catch (e) {
+            console.error("Erro ao recuperar jogo salvo", e);
+        }
+    }
+    // Se não tinha jogo salvo (ou deu erro), inicia um novo do zero
+    newGame();
+}
+
 function saveState() {
     const state = {
         stock: stock.map(c => ({...c })),
@@ -72,7 +125,6 @@ function saveState() {
     historyStack.push(state);
 }
 
-// MODIFICAÇÃO 2: Função executora do botão "Voltar"
 function desfazerJogada() {
     if (historyStack.length === 0) return;
     const prevState = historyStack.pop();
@@ -83,10 +135,65 @@ function desfazerJogada() {
     moves = prevState.moves;
     score = prevState.score;
     selected = null;
-
     document.getElementById('move-count').textContent = moves;
+
+    salvarEstadoAtual(); // Salva após voltar a jogada
     render();
 }
+
+// =================================================================
+// GERENCIAMENTO DE MODAIS E DERROTAS
+// =================================================================
+
+let acaoConfirmada = null;
+
+function abrirConfirmacao(titulo, mensagem, callbackAcao) {
+    document.getElementById('confirm-title').textContent = titulo;
+    document.getElementById('confirm-msg').textContent = mensagem;
+    acaoConfirmada = callbackAcao;
+    document.getElementById('confirm-overlay').classList.add('show');
+}
+
+function fecharConfirmacao() {
+    document.getElementById('confirm-overlay').classList.remove('show');
+    acaoConfirmada = null;
+}
+
+function executarConfirmacao() {
+    if (acaoConfirmada) acaoConfirmada();
+    fecharConfirmacao();
+}
+
+function obterEstatistica(chave) { return parseInt(localStorage.getItem(chave) || '0'); }
+
+function salvarNovaDerrota() {
+    const total = obterEstatistica('solitaire_loss_count') + 1;
+    localStorage.setItem('solitaire_loss_count', total.toString());
+    atualizarDisplayEstatisticas();
+}
+
+function atualizarDisplayEstatisticas() {
+    const elWin = document.getElementById('win-count');
+    if (elWin) elWin.textContent = obterEstatistica('solitaire_win_count');
+
+    const elLoss = document.getElementById('loss-count');
+    if (elLoss) elLoss.textContent = obterEstatistica('solitaire_loss_count');
+}
+
+function pedirNovoJogo() {
+    if (moves > 0 && !gameWon) {
+        abrirConfirmacao('Atenção', 'O jogo atual ainda não terminou. Deseja abandoná-lo? Isso contará como uma derrota.', () => {
+            salvarNovaDerrota();
+            newGame();
+        });
+    } else {
+        newGame();
+    }
+}
+
+// =================================================================
+// NOVO JOGO E RENDERIZAÇÃO
+// =================================================================
 
 function newGame() {
     clearInterval(timerInterval);
@@ -103,8 +210,7 @@ function newGame() {
     document.getElementById('win-overlay').classList.remove('show');
     document.getElementById('auto-btn').style.display = 'none';
 
-    // MODIFICAÇÃO 6: Exibe a quantidade de vitórias salvas no localStorage
-    atualizarDisplayVitorias();
+    atualizarDisplayEstatisticas();
 
     let deck = [];
     for (const suit of SUITS)
@@ -131,14 +237,16 @@ function newGame() {
     }
 
     stock = deck.map(c => ({...c, faceUp: false }));
+
+    salvarEstadoAtual(); // Salva o novo jogo assim que as cartas são distribuídas
     render();
 
     timerInterval = setInterval(() => {
         seconds++;
         const m = Math.floor(seconds / 60);
         const s = seconds % 60;
-        document.getElementById('timer').textContent =
-            `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        document.getElementById('timer').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        salvarEstadoAtual(); // Guarda os segundos atuais
     }, 1000);
 }
 
@@ -170,14 +278,11 @@ function renderWaste() {
     div.id = 'card-waste-top';
     div.className = `card face-up ${cls}${isSel ? ' selected' : ''}`;
     div.innerHTML = faceHTML(c);
-
-    // MODIFICAÇÃO 3: Vinculado o disparador de clique rápido / viagem automática
     div.addEventListener('click', e => {
         e.stopPropagation();
         tratarCliqueCard('waste', null, null);
     });
     attachDragHandlers(div, { src: 'waste', cards: [c] });
-
     el.appendChild(div);
 }
 
@@ -194,8 +299,6 @@ function renderFoundation(i) {
     const div = document.createElement('div');
     div.id = `card-foundation-${i}`;
     div.className = `card face-up ${cls}`;
-
-    // MODIFICAÇÃO 3: Permite clicar em cartas da fundação para voltarem ou mudarem de lugar
     div.addEventListener('click', e => {
         e.stopPropagation();
         tratarCliqueCard('foundation', i, null);
@@ -234,8 +337,6 @@ function renderTableau(col) {
         } else {
             const cls = isRed(card.suit) ? 'red' : 'black';
             cardDiv.id = `card-tableau-${col}-${idx}`;
-
-            // A MÁGICA TÁTICA: Se a carta não for a última da coluna, esconde o centro grande para não encavalar nos cantos da carta de cima
             const stackedClass = isLast ? '' : ' card-stacked-hidden';
 
             cardDiv.className = `card face-up ${cls}${isSel ? ' selected' : ''}${stackedClass}`;
@@ -246,49 +347,185 @@ function renderTableau(col) {
                 e.stopPropagation();
                 tratarCliqueCard('tableau', col, idx);
             });
-
-            attachDragHandlers(cardDiv, {
-                src: 'tableau',
-                col,
-                startIdx: idx,
-                cards: tableau[col].slice(idx),
-            });
+            attachDragHandlers(cardDiv, { src: 'tableau', col, startIdx: idx, cards: tableau[col].slice(idx) });
         }
 
         div.appendChild(cardDiv);
         el.appendChild(div);
         top += card.faceUp ? OFFSET_UP : OFFSET_DOWN;
-    }); // CORREÇÃO: Chave de fechamento do loop forEach reinserida corretamente
+    });
 
     el.onclick = () => { if (!cards.length) clickTableauEmpty(col); };
 }
 
-/** HTML interno de uma carta virada para cima com número e naipe gigantes no centro */
 function faceHTML(card) {
     const valorCentral = card.value === '10' ? '10' : card.value;
-
     return `
-    <div class="card-corner-top">
-      <div>${card.value}</div>
-      <div>${card.suit}</div>
-    </div>
-    <div class="card-center-large">
-      <div class="card-center-value">${valorCentral}</div>
-      <div class="card-center-suit">${card.suit}</div>
-    </div>
-    <div class="card-corner-bottom">
-      <div>${card.value}</div>
-      <div>${card.suit}</div>
-    </div>`;
+    <div class="card-corner-top"><div>${card.value}</div><div>${card.suit}</div></div>
+    <div class="card-center-large"><div class="card-center-value">${valorCentral}</div><div class="card-center-suit">${card.suit}</div></div>
+    <div class="card-corner-bottom"><div>${card.value}</div><div>${card.suit}</div></div>`;
 }
 
 // =================================================================
-// MODIFICAÇÃO 3: MECANISMO DE VIAGEM INTELIGENTE (UM CLIQUE)
+// RECURSOS EXTRAS: REDISTRIBUIR, TOAST E DICA DINÂMICA
 // =================================================================
+
+let toastTimeout;
+
+function mostrarToast(msg) {
+    const toast = document.getElementById('toast-msg');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => toast.classList.remove('show'), 2800);
+}
+
+function pedirRedistribuicao() {
+    abrirConfirmacao('Misturar Cartas', 'Deseja redistribuir todas as cartas fechadas e o maço? Isso contará como uma DERROTA.', () => {
+
+        // 1. Efeito de ida: Recolhe todas as cartas atuais
+        const todasAsCartas = document.querySelectorAll('.card');
+        todasAsCartas.forEach(carta => carta.classList.add('anim-recolher'));
+
+        // 2. Espera as cartas sumirem (600ms)
+        setTimeout(() => {
+            salvarNovaDerrota();
+
+            let pool = [];
+            pool.push(...waste);
+            waste = [];
+            pool.push(...stock);
+            stock = [];
+
+            let colFaceDownCounts = [0, 0, 0, 0, 0, 0, 0];
+            for (let i = 0; i < 7; i++) {
+                let faceDowns = tableau[i].filter(c => !c.faceUp);
+                colFaceDownCounts[i] = faceDowns.length;
+                pool.push(...faceDowns);
+                tableau[i] = tableau[i].filter(c => c.faceUp);
+            }
+
+            shuffle(pool);
+
+            for (let i = 0; i < 7; i++) {
+                let newFaceDowns = [];
+                for (let j = 0; j < colFaceDownCounts[i]; j++) {
+                    let c = pool.pop();
+                    c.faceUp = false;
+                    newFaceDowns.push(c);
+                }
+                tableau[i] = [...newFaceDowns, ...tableau[i]];
+            }
+
+            stock = pool.map(c => ({...c, faceUp: false }));
+
+            moves++;
+            historyStack = [];
+            document.getElementById('move-count').textContent = moves;
+            salvarEstadoAtual();
+
+            // Desenha as cartas novas na tela
+            render();
+
+            // 3. Efeito de volta: Faz as novas cartas aparecerem girando
+            const novasCartas = document.querySelectorAll('.card');
+            novasCartas.forEach(carta => carta.classList.add('anim-distribuir'));
+
+            // Remove a classe de animação depois que terminar para não dar bugs futuros de layout
+            setTimeout(() => {
+                novasCartas.forEach(carta => carta.classList.remove('anim-distribuir'));
+            }, 600);
+
+            mostrarToast("Cartas redistribuídas com sucesso!");
+
+        }, 600);
+    });
+}
+
+let hintState = { moves: -1, index: 0, list: [] };
+
+function obterDica() {
+    if (hintState.moves !== moves) {
+        let list = new Set();
+
+        for (let col = 0; col < 7; col++) {
+            if (!tableau[col].length) continue;
+            const c = tableau[col][tableau[col].length - 1];
+            for (let fi = 0; fi < 4; fi++)
+                if (canMoveToFoundation(c, fi)) { list.add(`card-tableau-${col}-${tableau[col].length - 1}`); break; }
+        }
+
+        if (waste.length) {
+            const c = waste[waste.length - 1];
+            for (let fi = 0; fi < 4; fi++)
+                if (canMoveToFoundation(c, fi)) { list.add('card-waste-top'); break; }
+        }
+
+        for (let colOrigem = 0; colOrigem < 7; colOrigem++) {
+            const tc = tableau[colOrigem];
+            for (let idx = 0; idx < tc.length; idx++) {
+                if (!tc[idx].faceUp) continue;
+                if (idx === 0 && tc[idx].value === 'K') continue;
+                for (let colDestino = 0; colDestino < 7; colDestino++) {
+                    if (colOrigem === colDestino) continue;
+                    if (canMoveToTableau(tc[idx], colDestino)) { list.add(`card-tableau-${colOrigem}-${idx}`); break; }
+                }
+            }
+        }
+
+        if (waste.length) {
+            const c = waste[waste.length - 1];
+            for (let col = 0; col < 7; col++)
+                if (canMoveToTableau(c, col)) { list.add('card-waste-top'); break; }
+        }
+
+        let temCartaUtilNoMaco = false;
+        const cartasOcultas = [...stock];
+        if (waste.length > 1) cartasOcultas.push(...waste.slice(0, -1));
+
+        for (const c of cartasOcultas) {
+            for (let fi = 0; fi < 4; fi++) { if (canMoveToFoundation(c, fi)) { temCartaUtilNoMaco = true; break; } }
+            if (temCartaUtilNoMaco) break;
+            for (let col = 0; col < 7; col++) { if (canMoveToTableau(c, col)) { temCartaUtilNoMaco = true; break; } }
+            if (temCartaUtilNoMaco) break;
+        }
+
+        if (temCartaUtilNoMaco) list.add('stock');
+
+        hintState.list = Array.from(list);
+        hintState.moves = moves;
+        hintState.index = 0;
+    }
+
+    if (hintState.list.length === 0) {
+        mostrarToast("Sem jogadas possíveis. Tente redistribuir as cartas (🔀).");
+        return;
+    }
+    if (hintState.index >= hintState.list.length) {
+        mostrarToast("Não há novas dicas! Faça um movimento para reavaliar.");
+        return;
+    }
+
+    destacarElementoDica(hintState.list[hintState.index]);
+    hintState.index++;
+}
+
+function destacarElementoDica(idElemento) {
+    const el = document.getElementById(idElemento);
+    if (!el) return;
+    el.classList.remove('hint-highlight');
+    void el.offsetWidth;
+    el.classList.add('hint-highlight');
+    setTimeout(() => el.classList.remove('hint-highlight'), 1600);
+}
+
+// =================================================================
+// LÓGICAS NUCLEARES DE MOVIMENTO E DRAG
+// =================================================================
+
 function tratarCliqueCard(src, identifier, idx) {
     let cardMover = null;
     let packMover = [];
-
     if (src === 'waste') {
         if (!waste.length) return;
         cardMover = waste[waste.length - 1];
@@ -302,7 +539,6 @@ function tratarCliqueCard(src, identifier, idx) {
         packMover = tableau[identifier].slice(idx);
     }
 
-    // 1. Tenta mandar para as Fundações primeiro (Apenas grupos de 1 carta)
     if (packMover.length === 1) {
         for (let fi = 0; fi < 4; fi++) {
             if (canMoveToFoundation(cardMover, fi)) {
@@ -314,8 +550,6 @@ function tratarCliqueCard(src, identifier, idx) {
             }
         }
     }
-
-    // 2. Tenta mandar para as colunas do Tableau
     for (let col = 0; col < 7; col++) {
         if (src === 'tableau' && identifier === col) continue;
         if (canMoveToTableau(cardMover, col)) {
@@ -340,81 +574,103 @@ function executarRemocaoOrigem(src, identifier, idx) {
 function finalizarAcaoMovimento() {
     selected = null;
     countMove();
+    salvarEstadoAtual();
     render();
     checkWin();
 }
 
-// =================================================================
-// MODIFICAÇÃO 4: SISTEMA ANALISADOR DE DICAS INTELECTUAL
-// =================================================================
-function obterDica() {
-    for (let col = 0; col < 7; col++) {
-        if (!tableau[col].length) continue;
-        const c = tableau[col][tableau[col].length - 1];
-        for (let fi = 0; fi < 4; fi++) {
-            if (canMoveToFoundation(c, fi)) {
-                destacarElementoDica(`card-tableau-${col}-${tableau[col].length - 1}`);
-                return;
-            }
-        }
+function clickStock() {
+    saveState();
+    if (stock.length === 0) {
+        if (!waste.length) return;
+        stock = waste.reverse().map(c => ({...c, faceUp: false }));
+        waste = [];
+        countMove();
+    } else {
+        const c = stock.pop();
+        c.faceUp = true;
+        waste.push(c);
+        countMove();
     }
-
-    if (waste.length) {
-        const c = waste[waste.length - 1];
-        for (let fi = 0; fi < 4; fi++) {
-            if (canMoveToFoundation(c, fi)) {
-                destacarElementoDica('card-waste-top');
-                return;
-            }
-        }
-    }
-
-    for (let colOrigem = 0; colOrigem < 7; colOrigem++) {
-        const tc = tableau[colOrigem];
-        for (let idx = 0; idx < tc.length; idx++) {
-            if (!tc[idx].faceUp) continue;
-            if (idx === 0 && tc[idx].value === 'K') continue;
-
-            for (let colDestino = 0; colDestino < 7; colDestino++) {
-                if (colOrigem === colDestino) continue;
-                if (canMoveToTableau(tc[idx], colDestino)) {
-                    destacarElementoDica(`card-tableau-${colOrigem}-${idx}`);
-                    return;
-                }
-            }
-        }
-    }
-
-    if (waste.length) {
-        const c = waste[waste.length - 1];
-        for (let col = 0; col < 7; col++) {
-            if (canMoveToTableau(c, col)) {
-                destacarElementoDica('card-waste-top');
-                return;
-            }
-        }
-    }
-
-    destacarElementoDica('stock');
+    selected = null;
+    salvarEstadoAtual();
+    render();
 }
 
-function destacarElementoDica(idElemento) {
-    const el = document.getElementById(idElemento);
-    if (!el) return;
-    el.classList.remove('hint-highlight');
-    void el.offsetWidth;
-    el.classList.add('hint-highlight');
-    setTimeout(() => el.classList.remove('hint-highlight'), 1600);
+function clickTableauEmpty(col) {
+    if (!selected) return;
+    if (selected.cards[0].value === 'K') {
+        saveState();
+        placeOnTableau(col);
+    }
 }
 
-// =================================================================
-// DRAG & DROP POINTER HANDLERS
-// =================================================================
+function canMoveToFoundation(card, fi) {
+    const f = foundations[fi];
+    if (f.length === 0) return card.value === 'A';
+    const top = f[f.length - 1];
+    return card.suit === top.suit && cardVal(card) === cardVal(top) + 1;
+}
+
+function canMoveToTableau(card, col) {
+    const tc = tableau[col];
+    if (tc.length === 0) return card.value === 'K';
+    const top = tc[tc.length - 1];
+    if (!top.faceUp) return false;
+    return isRed(card.suit) !== isRed(top.suit) && cardVal(card) === cardVal(top) - 1;
+}
+
+function placeOnFoundation(fi) {
+    if (!selected) return;
+    const c = selected.cards[0];
+    executarRemocaoOrigem(selected.src, selected.col, selected.startIdx);
+    foundations[fi].push(c);
+    finalizarAcaoMovimento();
+}
+
+function placeOnTableau(col) {
+    if (!selected) return;
+    const cards = selected.cards;
+    executarRemocaoOrigem(selected.src, selected.col, selected.startIdx);
+    tableau[col].push(...cards);
+    finalizarAcaoMovimento();
+}
+
+function flipLastCard(col) {
+    const tc = tableau[col];
+    if (tc.length > 0 && !tc[tc.length - 1].faceUp) tc[tc.length - 1].faceUp = true;
+}
+
+function countMove() {
+    moves++;
+    document.getElementById('move-count').textContent = moves;
+}
+
+function checkWin() {
+    if (!foundations.every(f => f.length === 13)) return;
+    clearInterval(timerInterval);
+    gameWon = true;
+
+    const totalVitorias = obterEstatistica('solitaire_win_count') + 1;
+    localStorage.setItem('solitaire_win_count', totalVitorias.toString());
+    atualizarDisplayEstatisticas();
+
+    localStorage.removeItem('solitaire_saved_game'); // Jogo vencido limpa o save automático da memória!
+
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    document.getElementById('win-stats').textContent = `Tempo: ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} · ${moves} movimentos`;
+    document.getElementById('win-overlay').classList.add('show');
+}
+
+/* =============================================================
+   POINTER EVENTS / DRAG
+============================================================= */
+
 function attachDragHandlers(el, meta) {
     el.addEventListener('pointerdown', e => {
         if (e.button !== 0) return;
         e.stopPropagation();
-
         drag.active = true;
         drag.pointerId = e.pointerId;
         drag.src = meta.src;
@@ -425,20 +681,15 @@ function attachDragHandlers(el, meta) {
         drag.startX = e.clientX;
         drag.startY = e.clientY;
         drag.moved = false;
-
         const rect = el.getBoundingClientRect();
         drag.ghostOffX = e.clientX - rect.left;
         drag.ghostOffY = e.clientY - rect.top;
-
         try { el.setPointerCapture(e.pointerId); } catch (err) {}
     });
-
     el.addEventListener('pointermove', e => {
         if (!drag.active || e.pointerId !== drag.pointerId) return;
-
         const dx = e.clientX - drag.startX;
         const dy = e.clientY - drag.startY;
-
         if (!drag.moved) {
             if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
             drag.moved = true;
@@ -447,19 +698,16 @@ function attachDragHandlers(el, meta) {
             if (ghostEl) ghostEl.style.display = 'flex';
             if (drag.sourceEl) drag.sourceEl.style.opacity = '0.3';
         }
-
         if (ghostEl) {
             ghostEl.style.left = (e.clientX - drag.ghostOffX) + 'px';
             ghostEl.style.top = (e.clientY - drag.ghostOffY) + 'px';
         }
         highlightDropZones(e.clientX, e.clientY);
     });
-
     el.addEventListener('pointerup', e => {
         if (!drag.active || e.pointerId !== drag.pointerId) return;
         finishDrag(e.clientX, e.clientY);
     });
-
     el.addEventListener('pointercancel', e => {
         if (!drag.active || e.pointerId !== drag.pointerId) return;
         finishDrag(null, null);
@@ -469,14 +717,12 @@ function attachDragHandlers(el, meta) {
 function finishDrag(clientX, clientY) {
     const wasMoved = drag.moved;
     const target = (wasMoved && clientX !== null) ? getDropTarget(clientX, clientY) : null;
-
     if (drag.sourceEl) drag.sourceEl.style.opacity = '';
     if (ghostEl) {
         ghostEl.style.display = 'none';
         ghostEl.innerHTML = '';
     }
     clearDropHighlights();
-
     const dragData = { src: drag.src, col: drag.col, startIdx: drag.startIdx, cards: drag.cards };
     resetDragState();
 
@@ -485,9 +731,7 @@ function finishDrag(clientX, clientY) {
         selected = dragData;
         if (target.type === 'foundation') placeOnFoundation(target.fi);
         else if (target.type === 'tableau') placeOnTableau(target.col);
-    } else if (wasMoved) {
-        render();
-    }
+    } else if (wasMoved) { render(); }
 }
 
 function resetDragState() {
@@ -537,7 +781,6 @@ function pointInRect(el, cx, cy) {
 function highlightDropZones(cx, cy) {
     clearDropHighlights();
     if (!drag.active || !drag.cards.length) return;
-
     if (drag.cards.length === 1) {
         for (let fi = 0; fi < 4; fi++) {
             const el = document.getElementById(`f${fi}`);
@@ -550,161 +793,93 @@ function highlightDropZones(cx, cy) {
     }
 }
 
-function clearDropHighlights() {
-    document.querySelectorAll('.drop-target-valid').forEach(el => el.classList.remove('drop-target-valid'));
-}
-
+function clearDropHighlights() { document.querySelectorAll('.drop-target-valid').forEach(el => el.classList.remove('drop-target-valid')); }
 /* =============================================================
-   CLIQUE-CLIQUE FALLBACK LOGIC
-============================================================= */
-function clickStock() {
-    saveState();
-    if (stock.length === 0) {
-        if (!waste.length) return;
-        stock = waste.reverse().map(c => ({...c, faceUp: false }));
-        waste = [];
-        countMove();
-    } else {
-        const c = stock.pop();
-        c.faceUp = true;
-        waste.push(c);
-        countMove();
-    }
-    selected = null;
-    render();
-}
-
-function clickTableauEmpty(col) {
-    if (!selected) return;
-    if (selected.cards[0].value === 'K') {
-        saveState();
-        placeOnTableau(col);
-    }
-}
-
-function canMoveToFoundation(card, fi) {
-    const f = foundations[fi];
-    if (f.length === 0) return card.value === 'A';
-    const top = f[f.length - 1];
-    return card.suit === top.suit && cardVal(card) === cardVal(top) + 1;
-}
-
-function canMoveToTableau(card, col) {
-    const tc = tableau[col];
-    if (tc.length === 0) return card.value === 'K';
-    const top = tc[tc.length - 1];
-    if (!top.faceUp) return false;
-    return isRed(card.suit) !== isRed(top.suit) && cardVal(card) === cardVal(top) - 1;
-}
-
-function placeOnFoundation(fi) {
-    if (!selected) return;
-    const c = selected.cards[0];
-    executarRemocaoOrigem(selected.src, selected.col, selected.startIdx);
-    foundations[fi].push(c);
-    finalizarAcaoMovimento();
-}
-
-function placeOnTableau(col) {
-    if (!selected) return;
-    const cards = selected.cards;
-    executarRemocaoOrigem(selected.src, selected.col, selected.startIdx);
-    tableau[col].push(...cards);
-    finalizarAcaoMovimento();
-}
-
-function flipLastCard(col) {
-    const tc = tableau[col];
-    if (tc.length > 0 && !tc[tc.length - 1].faceUp) {
-        tc[tc.length - 1].faceUp = true;
-    }
-}
-
-function countMove() {
-    moves++;
-    document.getElementById('move-count').textContent = moves;
-}
-
-// =================================================================
-// MODIFICAÇÃO 6: GRAVAÇÃO E GERENCIAMENTO DE VITÓRIAS LOCALSTORAGE
-// =================================================================
-function obterVitoriasSalvas() {
-    return parseInt(localStorage.getItem('solitaire_win_count') || '0');
-}
-
-function salvarNovaVitoria() {
-    const total = obterVitoriasSalvas() + 1;
-    localStorage.setItem('solitaire_win_count', total.toString());
-    atualizarDisplayVitorias();
-}
-
-function atualizarDisplayVitorias() {
-    const el = document.getElementById('win-count');
-    if (el) el.textContent = obterVitoriasSalvas();
-}
-
-function checkWin() {
-    if (!foundations.every(f => f.length === 13)) return;
-
-    clearInterval(timerInterval);
-    gameWon = true;
-    salvarNovaVitoria();
-
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    document.getElementById('win-stats').textContent =
-        `Tempo: ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} · ${moves} movimentos`;
-    document.getElementById('win-overlay').classList.add('show');
-}
-
-/* =============================================================
-   AUTO-COMPLETE AUTO RESOLVER
+   AUTO-COMPLETE AUTO RESOLVER (ATUALIZADO)
 ============================================================= */
 function checkAutoComplete() {
     if (gameWon) return;
-    const allVisible = tableau.every(col => col.every(c => c.faceUp)) && stock.length === 0 && waste.length === 0;
+
+    // Agora o botão é liberado assim que TODAS as cartas do Tableau estiverem viradas para cima
+    const allVisible = tableau.every(col => col.every(c => c.faceUp));
+
     document.getElementById('auto-btn').style.display = allVisible ? 'block' : 'none';
 }
 
 function autoComplete() {
     if (gameWon) return;
 
+    // Desativa os controles manuais para o jogador não atrapalhar o robô
+    document.getElementById('controls').style.pointerEvents = 'none';
+
     function step() {
+        if (gameWon) {
+            document.getElementById('controls').style.pointerEvents = 'auto';
+            return;
+        }
+
+        let moveu = false;
+
+        // 1. Tenta mandar cartas das COLUNAS para a Fundação
         for (let col = 0; col < 7; col++) {
             const tc = tableau[col];
             if (!tc.length) continue;
             const c = tc[tc.length - 1];
+
             for (let fi = 0; fi < 4; fi++) {
                 if (canMoveToFoundation(c, fi)) {
-                    saveState();
                     tc.pop();
                     foundations[fi].push(c);
                     countMove();
+                    salvarEstadoAtual();
                     render();
                     checkWin();
-                    if (!gameWon) setTimeout(step, 60);
-                    return;
+                    moveu = true;
+                    break;
                 }
             }
+            if (moveu) break; // Interrompe para rodar o próximo frame da animação
         }
-        if (waste.length) {
+
+        // 2. Tenta mandar a carta do DESCARTE para a Fundação
+        if (!moveu && waste.length) {
             const c = waste[waste.length - 1];
             for (let fi = 0; fi < 4; fi++) {
                 if (canMoveToFoundation(c, fi)) {
-                    saveState();
                     waste.pop();
                     foundations[fi].push(c);
                     countMove();
+                    salvarEstadoAtual();
                     render();
                     checkWin();
-                    if (!gameWon) setTimeout(step, 60);
-                    return;
+                    moveu = true;
+                    break;
                 }
             }
         }
+
+        // 3. O SEGREDO: Se não encontrou jogada na mesa, ele GIRA O MAÇO automaticamente!
+        if (!moveu && (stock.length > 0 || waste.length > 0)) {
+            if (stock.length === 0) {
+                // Reseta o maço
+                stock = waste.reverse().map(c => ({...c, faceUp: false }));
+                waste = [];
+            } else {
+                // Puxa uma carta nova
+                const c = stock.pop();
+                c.faceUp = true;
+                waste.push(c);
+            }
+            countMove();
+            salvarEstadoAtual();
+            render();
+        }
+
+        // Roda o próximo passo do robô a cada 60 milissegundos
+        if (!gameWon) setTimeout(step, 60);
     }
+
     step();
 }
-
-// Inicialização Core
-newGame();
+// INICIALIZADOR: Checa se tem jogo salvo antes de criar um novo
+carregarOuIniciarJogo();

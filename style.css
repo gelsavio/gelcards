@@ -31,7 +31,7 @@ body {
     justify-content: space-between;
     margin-bottom: 16px;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 12px;
 }
 
 #top-bar h1 {
@@ -47,7 +47,8 @@ body {
 
 #stats {
     display: flex;
-    gap: 14px;
+    flex-wrap: wrap;
+    gap: 12px;
     color: #9dceaa;
     font-size: 13px;
     font-weight: bold;
@@ -55,7 +56,9 @@ body {
 
 #controls {
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
+    justify-content: flex-end;
 }
 
 #controls button {
@@ -76,7 +79,7 @@ body {
 
 
 /* =========================================================
-   ÁREA DO TOPO ATUALIZADA (MODIFICAÇÃO 1)
+   ÁREA DO TOPO
 ========================================================= */
 
 #board-top-wrapper {
@@ -169,7 +172,7 @@ body {
 
 
 /* =========================================================
-   CARTAS COM CENTRO AMPLIADO
+   CARTAS 
 ========================================================= */
 
 .card {
@@ -204,14 +207,11 @@ body {
     color: #111;
 }
 
-
-/* Cantos discretos para dar espaço ao centro */
-
 .card-corner-top {
     display: flex;
     flex-direction: column;
     line-height: 1.1;
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 800;
 }
 
@@ -220,73 +220,45 @@ body {
     flex-direction: column;
     align-items: flex-end;
     line-height: 1.1;
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 800;
     transform: rotate(180deg);
 }
 
-
-/* Elemento Central Grande e Centralizado (Ocupando 60% da carta) */
-
 .card-center-large {
     position: absolute;
-    top: 50%;
+    top: 52%;
     left: 50%;
     transform: translate(-50%, -50%);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    line-height: 0.85;
+    line-height: 0.8;
     pointer-events: none;
     text-align: center;
     width: 100%;
-    height: 60%;
+    height: 50%;
 }
 
 .card-center-value {
-    font-size: 5.5vw;
+    font-size: 24px;
     font-weight: 900;
-    letter-spacing: -2px;
+    letter-spacing: -1.5px;
 }
 
 .card-center-suit {
-    font-size: 9.5vw;
-    margin-top: -5px;
+    font-size: 38px;
+    margin-top: -2px;
 }
-
-
-/* CORREÇÃO: Escalonamento real preenchendo os 60% visíveis nos monitores */
-
-@media (min-width: 960px) {
-    .card-center-value {
-        font-size: 46px;
-        /* Aumentado de 34px para dar presença real */
-    }
-    .card-center-suit {
-        font-size: 78px;
-        /* Aumentado de 58px para ficar gigante no meio */
-    }
-}
-
-
-/* Trava de segurança para telas muito pequenas (celulares compactos) */
-
-@media (max-width: 480px) {
-    .card-center-value {
-        font-size: 24px;
-    }
-    .card-center-suit {
-        font-size: 42px;
-    }
-}
-
-
-/* Oculta os elementos centrais em cartas empilhadas no Tableau para evitar colisões visuais */
 
 .card-stacked-hidden .card-center-large {
     display: none !important;
+}
+
+.card-stacked-hidden {
+    overflow: hidden !important;
+    height: 30px !important;
 }
 
 .card.selected {
@@ -307,7 +279,7 @@ body {
 
 
 /* =========================================================
-   DICAS VISUAIS (MODIFICAÇÃO 4)
+   DICAS E TOAST NOTIFICATIONS
 ========================================================= */
 
 .hint-highlight {
@@ -325,55 +297,127 @@ body {
     }
 }
 
+#toast-msg {
+    visibility: hidden;
+    min-width: 250px;
+    background-color: #1e293b;
+    color: #fff;
+    text-align: center;
+    border-radius: 8px;
+    padding: 12px 16px;
+    position: fixed;
+    z-index: 10000;
+    left: 50%;
+    bottom: -50px;
+    transform: translateX(-50%);
+    font-size: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    transition: opacity 0.3s, bottom 0.3s;
+    font-weight: bold;
+    border: 1px solid #334155;
+}
+
+#toast-msg.show {
+    visibility: visible;
+    opacity: 1;
+    bottom: 30px;
+}
+
 
 /* =========================================================
-   OVERLAY DE VITÓRIA / GHOST / DRAG
+   OVERLAYS E MODAIS REUTILIZÁVEIS
 ========================================================= */
 
-#win-overlay {
+.modal-overlay {
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.72);
+    background: rgba(0, 0, 0, 0.75);
     z-index: 1000;
     align-items: center;
     justify-content: center;
+    backdrop-filter: blur(2px);
 }
 
-#win-overlay.show {
+.modal-overlay.show {
     display: flex;
 }
 
-#win-box {
+.modal-box {
     background: #fff;
-    border-radius: 18px;
-    padding: 36px 44px;
+    border-radius: 16px;
+    padding: 28px 32px;
     text-align: center;
-    max-width: 340px;
+    max-width: 360px;
+    width: 90%;
+    animation: pop-in 0.3s ease;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
 }
 
-#win-box h2 {
-    font-size: 26px;
-    font-weight: 600;
-    color: #145220;
-    margin-bottom: 8px;
+@keyframes pop-in {
+    from {
+        transform: scale(0.85);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
-#win-box p {
-    color: #555;
+.modal-box h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 12px;
+}
+
+.modal-box p {
+    color: #475569;
     font-size: 14px;
-    margin-bottom: 22px;
+    margin-bottom: 24px;
+    line-height: 1.5;
+    font-weight: 500;
 }
 
-#win-box button {
-    background: #145220;
-    color: #fff;
-    border: none;
-    padding: 11px 30px;
-    border-radius: 9px;
-    font-size: 15px;
-    cursor: pointer;
+.btn-group {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
 }
+
+.btn-modal {
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    font-weight: 700;
+    flex: 1;
+    min-width: 120px;
+    transition: opacity 0.2s;
+}
+
+.btn-modal:hover {
+    opacity: 0.9;
+}
+
+.btn-yes {
+    background: #e11d48;
+    color: white;
+}
+
+.btn-no {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+
+/* =========================================================
+   DRAG & DROP
+========================================================= */
 
 #drag-ghost {
     position: fixed;
@@ -419,11 +463,53 @@ body {
         grid-template-columns: repeat(2, 1fr);
         width: 38%;
     }
-    .card-corner-top,
-    .card-corner-bottom {
-        font-size: 11px;
+}
+
+
+/* =========================================================
+   ANIMAÇÃO DE MISTURAR CARTAS
+========================================================= */
+
+
+/* =========================================================
+   ANIMAÇÕES DE MISTURAR CARTAS
+========================================================= */
+
+
+/* 1. Animação de Recolher (Sugador) */
+
+.anim-recolher {
+    animation: sugador-cartas 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    pointer-events: none;
+    z-index: 1000 !important;
+}
+
+@keyframes sugador-cartas {
+    0% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
     }
-    .card-suit-center {
-        font-size: 22px;
+    100% {
+        transform: scale(0) rotate(720deg);
+        opacity: 0;
+    }
+}
+
+
+/* 2. Animação de Devolver (Efeito Mola/Distribuição) */
+
+.anim-distribuir {
+    animation: cuspidor-cartas 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    pointer-events: none;
+}
+
+@keyframes cuspidor-cartas {
+    0% {
+        transform: scale(0) rotate(-720deg);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
     }
 }
