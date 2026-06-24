@@ -27,6 +27,8 @@ let timerInterval = null;
 let gameWon = false;
 let score = 0;
 let historyStack = [];
+let hasMixed = false; // NOVA VARIÁVEL
+
 
 let drag = {
     active: false,
@@ -42,6 +44,7 @@ let drag = {
     startY: 0,
     moved: false
 };
+
 
 const ghostEl = document.getElementById('drag-ghost');
 const isRed = suit => RED_SUITS.has(suit);
@@ -59,7 +62,7 @@ function shuffle(arr) {
 // MOTOR DE AUTO-SAVE (IMPEDE A TRAPAÇA DO F5)
 // =================================================================
 function salvarEstadoAtual() {
-    if (gameWon) return; // Não salva se o jogo já acabou
+    if (gameWon) return;
     const state = {
         stock,
         waste,
@@ -69,7 +72,8 @@ function salvarEstadoAtual() {
         seconds,
         score,
         historyStack,
-        gameWon
+        gameWon,
+        hasMixed
     };
     localStorage.setItem('solitaire_saved_game', JSON.stringify(state));
 }
@@ -79,7 +83,6 @@ function carregarOuIniciarJogo() {
     if (saved) {
         try {
             const state = JSON.parse(saved);
-            // Remonta o tabuleiro exatamente como estava antes do F5
             stock = state.stock;
             waste = state.waste;
             foundations = state.foundations;
@@ -89,27 +92,26 @@ function carregarOuIniciarJogo() {
             score = state.score || 0;
             historyStack = state.historyStack || [];
             gameWon = state.gameWon || false;
+            hasMixed = state.hasMixed || false; // Carrega a "ficha suja" se houver
 
             atualizarDisplayEstatisticas();
             document.getElementById('move-count').textContent = moves;
 
-            // Retoma o cronômetro
             clearInterval(timerInterval);
             timerInterval = setInterval(() => {
                 seconds++;
                 const m = Math.floor(seconds / 60);
                 const s = seconds % 60;
                 document.getElementById('timer').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-                salvarEstadoAtual(); // Salva o tempo a cada segundo
+                salvarEstadoAtual();
             }, 1000);
 
             render();
-            return; // Interrompe para não gerar novo jogo
+            return;
         } catch (e) {
             console.error("Erro ao recuperar jogo salvo", e);
         }
     }
-    // Se não tinha jogo salvo (ou deu erro), inicia um novo do zero
     newGame();
 }
 
@@ -160,7 +162,11 @@ function fecharConfirmacao() {
 }
 
 function executarConfirmacao() {
-    if (acaoConfirmada) acaoConfirmada();
+    if (acaoConfirmada) {
+        const acao = acaoConfirmada;
+        acaoConfirmada = null; // Esvazia a ação imediatamente para evitar cliques duplos
+        acao();
+    }
     fecharConfirmacao();
 }
 
@@ -181,13 +187,20 @@ function atualizarDisplayEstatisticas() {
 }
 
 function pedirNovoJogo() {
-    if (moves > 0 && !gameWon) {
+    if (moves === 0 || gameWon) {
+        // Se o jogo nem começou direito ou já foi vencido, recomeça direto sem perguntar
+        newGame();
+    } else if (hasMixed) {
+        // Se a derrota já foi cobrada no botão de Misturar, apenas confirma se quer sair
+        abrirConfirmacao('Novo Jogo', 'Deseja abandonar esta partida e começar uma nova?', () => {
+            newGame(); // Inicia o jogo sem rodar o salvarNovaDerrota()
+        });
+    } else {
+        // Se a ficha está limpa, avisa que o abandono custará uma derrota
         abrirConfirmacao('Atenção', 'O jogo atual ainda não terminou. Deseja abandoná-lo? Isso contará como uma derrota.', () => {
             salvarNovaDerrota();
             newGame();
         });
-    } else {
-        newGame();
     }
 }
 
@@ -204,6 +217,10 @@ function newGame() {
     selected = null;
     gameWon = false;
     historyStack = [];
+    hasMixed = false;
+
+    // A MÁGICA: Garante que os botões do topo SEMPRE iniciem destravados
+    document.getElementById('controls').style.pointerEvents = 'auto';
 
     document.getElementById('timer').textContent = '00:00';
     document.getElementById('move-count').textContent = '0';
@@ -238,7 +255,7 @@ function newGame() {
 
     stock = deck.map(c => ({...c, faceUp: false }));
 
-    salvarEstadoAtual(); // Salva o novo jogo assim que as cartas são distribuídas
+    salvarEstadoAtual();
     render();
 
     timerInterval = setInterval(() => {
@@ -246,7 +263,7 @@ function newGame() {
         const m = Math.floor(seconds / 60);
         const s = seconds % 60;
         document.getElementById('timer').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-        salvarEstadoAtual(); // Guarda os segundos atuais
+        salvarEstadoAtual();
     }, 1000);
 }
 
@@ -256,6 +273,12 @@ function render() {
     for (let i = 0; i < 4; i++) renderFoundation(i);
     for (let i = 0; i < 7; i++) renderTableau(i);
     checkAutoComplete();
+
+    // Atualiza os contadores no topo
+    const elStockCount = document.getElementById('stock-count');
+    const elWasteCount = document.getElementById('waste-count');
+    if (elStockCount) elStockCount.textContent = stock.length;
+    if (elWasteCount) elWasteCount.textContent = waste.length;
 }
 
 function renderStock() {
@@ -381,15 +404,18 @@ function mostrarToast(msg) {
 }
 
 function pedirRedistribuicao() {
-    abrirConfirmacao('Misturar Cartas', 'Deseja redistribuir todas as cartas fechadas e o maço? Isso contará como uma DERROTA.', () => {
+    // 1. Isolamos toda a mágica do redemoinho nesta função interna
+    const executarMistura = () => {
+        document.getElementById('controls').style.pointerEvents = 'none';
 
-        // 1. Efeito de ida: Recolhe todas as cartas atuais
         const todasAsCartas = document.querySelectorAll('.card');
         todasAsCartas.forEach(carta => carta.classList.add('anim-recolher'));
 
-        // 2. Espera as cartas sumirem (600ms)
         setTimeout(() => {
-            salvarNovaDerrota();
+            if (!hasMixed) {
+                salvarNovaDerrota();
+                hasMixed = true;
+            }
 
             let pool = [];
             pool.push(...waste);
@@ -424,22 +450,33 @@ function pedirRedistribuicao() {
             document.getElementById('move-count').textContent = moves;
             salvarEstadoAtual();
 
-            // Desenha as cartas novas na tela
             render();
 
-            // 3. Efeito de volta: Faz as novas cartas aparecerem girando
             const novasCartas = document.querySelectorAll('.card');
             novasCartas.forEach(carta => carta.classList.add('anim-distribuir'));
 
-            // Remove a classe de animação depois que terminar para não dar bugs futuros de layout
             setTimeout(() => {
                 novasCartas.forEach(carta => carta.classList.remove('anim-distribuir'));
+                document.getElementById('controls').style.pointerEvents = 'auto';
             }, 600);
 
             mostrarToast("Cartas redistribuídas com sucesso!");
 
         }, 600);
-    });
+    };
+
+    // 2. A Lógica do Alerta (A Gangorra)
+    if (!hasMixed) {
+        // Se a ficha está limpa (ainda não misturou), mostra o aviso de Derrota e aguarda a confirmação
+        abrirConfirmacao(
+            'Misturar Cartas',
+            'Deseja redistribuir todas as cartas fechadas e o maço? Isso contará como uma DERROTA.',
+            executarMistura
+        );
+    } else {
+        // Se já misturou antes nesta partida, pula o alerta e roda a animação direto!
+        executarMistura();
+    }
 }
 
 let hintState = { moves: -1, index: 0, list: [] };
@@ -651,15 +688,25 @@ function checkWin() {
     clearInterval(timerInterval);
     gameWon = true;
 
-    const totalVitorias = obterEstatistica('solitaire_win_count') + 1;
-    localStorage.setItem('solitaire_win_count', totalVitorias.toString());
-    atualizarDisplayEstatisticas();
+    // Só dá a vitória se o jogador não tiver apelado pro botão de misturar
+    if (!hasMixed) {
+        const totalVitorias = obterEstatistica('solitaire_win_count') + 1;
+        localStorage.setItem('solitaire_win_count', totalVitorias.toString());
+        atualizarDisplayEstatisticas();
+    }
 
-    localStorage.removeItem('solitaire_saved_game'); // Jogo vencido limpa o save automático da memória!
+    localStorage.removeItem('solitaire_saved_game');
 
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
-    document.getElementById('win-stats').textContent = `Tempo: ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} · ${moves} movimentos`;
+
+    // Monta a mensagem de vitória
+    let winMsg = `Tempo: ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} · ${moves} movimentos`;
+    if (hasMixed) {
+        winMsg += "<br><br><span style='color: #e11d48; font-size: 12px;'><em>(Esta vitória não contou no placar porque as cartas foram misturadas)</em></span>";
+    }
+
+    document.getElementById('win-stats').innerHTML = winMsg;
     document.getElementById('win-overlay').classList.add('show');
 }
 
@@ -797,13 +844,26 @@ function clearDropHighlights() { document.querySelectorAll('.drop-target-valid')
 /* =============================================================
    AUTO-COMPLETE AUTO RESOLVER (ATUALIZADO)
 ============================================================= */
+/* =============================================================
+   AUTO-COMPLETE AUTO RESOLVER (ATUALIZADO)
+============================================================= */
 function checkAutoComplete() {
     if (gameWon) return;
 
-    // Agora o botão é liberado assim que TODAS as cartas do Tableau estiverem viradas para cima
+    // Checa se todas as cartas do Tableau estão viradas para cima
     const allVisible = tableau.every(col => col.every(c => c.faceUp));
 
-    document.getElementById('auto-btn').style.display = allVisible ? 'block' : 'none';
+    const btnAuto = document.getElementById('auto-btn');
+    const btnMix = document.getElementById('mix-btn');
+
+    // Gangorra de exibição: se um aparece, o outro some para poupar espaço
+    if (allVisible) {
+        if (btnAuto) btnAuto.style.display = 'block';
+        if (btnMix) btnMix.style.display = 'none';
+    } else {
+        if (btnAuto) btnAuto.style.display = 'none';
+        if (btnMix) btnMix.style.display = 'block';
+    }
 }
 
 function autoComplete() {

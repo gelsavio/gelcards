@@ -30,7 +30,7 @@
             <div id="controls">
                 <button onclick="obterDica()">💡 Dica</button>
                 <button onclick="desfazerJogada()">↩ Voltar</button>
-                <button onclick="pedirRedistribuicao()">🔀 Misturar</button>
+                <button id="mix-btn" onclick="pedirRedistribuicao()">🔀 Misturar</button>
                 <button id="auto-btn" onclick="autoComplete()" style="display:none">Auto-completar ✓</button>
                 <button onclick="pedirNovoJogo()">Novo Jogo</button>
             </div>
@@ -46,10 +46,12 @@
 
             <div id="stock-area-top">
                 <div class="widget-col">
+                    <div class="pile-count" id="waste-count">0</div>
                     <div class="pile-slot waste-pile" id="waste"></div>
                     <div class="pile-label">Descarte</div>
                 </div>
                 <div class="widget-col">
+                    <div class="pile-count" id="stock-count">24</div>
                     <div class="pile-slot stock-pile" id="stock" onclick="clickStock()"></div>
                     <div class="pile-label">Maço</div>
                 </div>
