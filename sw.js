@@ -1,5 +1,5 @@
 // Altere o sufixo da versão sempre que atualizar arquivos do jogo
-const CACHE_NAME = 'pacienca-solitaire-cache-v111';
+const CACHE_NAME = 'pacienca-solitaire-cache-v112';
 
 const ASSETS_TO_CACHE = [
     './', // O ponto garante a raiz da pasta atual no GitHub Pages
