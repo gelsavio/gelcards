@@ -404,7 +404,13 @@ function mostrarToast(msg) {
 }
 
 function pedirRedistribuicao() {
-    // 1. Isolamos toda a mágica do redemoinho nesta função interna
+    // 1. TRAVA INTELIGENTE: Impede a mistura inútil
+    if (stock.length === 0 && waste.length === 0) {
+        mostrarToast("Não adianta misturar! Sem cartas no maço ou descarte, nenhuma carta nova seria revelada.");
+        return; // Interrompe a função aqui e não faz a mistura
+    }
+
+    // 2. Isolamos toda a mágica do redemoinho nesta função interna
     const executarMistura = () => {
         document.getElementById('controls').style.pointerEvents = 'none';
 
@@ -465,16 +471,14 @@ function pedirRedistribuicao() {
         }, 600);
     };
 
-    // 2. A Lógica do Alerta (A Gangorra)
+    // 3. A Lógica do Alerta (A Gangorra)
     if (!hasMixed) {
-        // Se a ficha está limpa (ainda não misturou), mostra o aviso de Derrota e aguarda a confirmação
         abrirConfirmacao(
             'Misturar Cartas',
             'Deseja redistribuir todas as cartas fechadas e o maço? Isso contará como uma DERROTA.',
             executarMistura
         );
     } else {
-        // Se já misturou antes nesta partida, pula o alerta e roda a animação direto!
         executarMistura();
     }
 }
