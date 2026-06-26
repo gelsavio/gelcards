@@ -404,13 +404,11 @@ function mostrarToast(msg) {
 }
 
 function pedirRedistribuicao() {
-    // 1. TRAVA INTELIGENTE: Impede a mistura inútil
     if (stock.length === 0 && waste.length === 0) {
         mostrarToast("Não adianta misturar! Sem cartas no maço ou descarte, nenhuma carta nova seria revelada.");
-        return; // Interrompe a função aqui e não faz a mistura
+        return;
     }
 
-    // 2. Isolamos toda a mágica do redemoinho nesta função interna
     const executarMistura = () => {
         document.getElementById('controls').style.pointerEvents = 'none';
 
@@ -451,6 +449,13 @@ function pedirRedistribuicao() {
 
             stock = pool.map(c => ({...c, faceUp: false }));
 
+            // NOVA REGRA: Já saca a primeira carta do maço direto para o descarte!
+            if (stock.length > 0) {
+                const primeiraCarta = stock.pop();
+                primeiraCarta.faceUp = true;
+                waste.push(primeiraCarta);
+            }
+
             moves++;
             historyStack = [];
             document.getElementById('move-count').textContent = moves;
@@ -471,7 +476,6 @@ function pedirRedistribuicao() {
         }, 600);
     };
 
-    // 3. A Lógica do Alerta (A Gangorra)
     if (!hasMixed) {
         abrirConfirmacao(
             'Misturar Cartas',
@@ -482,13 +486,35 @@ function pedirRedistribuicao() {
         executarMistura();
     }
 }
-
 let hintState = { moves: -1, index: 0, list: [] };
 
 function obterDica() {
     if (hintState.moves !== moves) {
-        let list = new Set();
+        let list = new Set(); // O Set mantém a ordem exata de quem entrou primeiro!
 
+        // 1º LUGAR DE PRIORIDADE: Movimentos do Descarte (Waste)
+        if (waste.length) {
+            const c = waste[waste.length - 1];
+            for (let fi = 0; fi < 4; fi++)
+                if (canMoveToFoundation(c, fi)) { list.add('card-waste-top'); break; }
+            for (let col = 0; col < 7; col++)
+                if (canMoveToTableau(c, col)) { list.add('card-waste-top'); break; }
+        }
+
+        // 2º LUGAR DE PRIORIDADE: Virar o Maço (Stock) se houver algo útil lá
+        let temCartaUtilNoMaco = false;
+        const cartasOcultas = [...stock];
+        if (waste.length > 1) cartasOcultas.push(...waste.slice(0, -1));
+
+        for (const c of cartasOcultas) {
+            for (let fi = 0; fi < 4; fi++) { if (canMoveToFoundation(c, fi)) { temCartaUtilNoMaco = true; break; } }
+            if (temCartaUtilNoMaco) break;
+            for (let col = 0; col < 7; col++) { if (canMoveToTableau(c, col)) { temCartaUtilNoMaco = true; break; } }
+            if (temCartaUtilNoMaco) break;
+        }
+        if (temCartaUtilNoMaco) list.add('stock');
+
+        // 3º LUGAR DE PRIORIDADE: Movimentos do Tableau para as Fundações
         for (let col = 0; col < 7; col++) {
             if (!tableau[col].length) continue;
             const c = tableau[col][tableau[col].length - 1];
@@ -496,12 +522,7 @@ function obterDica() {
                 if (canMoveToFoundation(c, fi)) { list.add(`card-tableau-${col}-${tableau[col].length - 1}`); break; }
         }
 
-        if (waste.length) {
-            const c = waste[waste.length - 1];
-            for (let fi = 0; fi < 4; fi++)
-                if (canMoveToFoundation(c, fi)) { list.add('card-waste-top'); break; }
-        }
-
+        // 4º LUGAR DE PRIORIDADE: Movimentos normais entre colunas da mesa
         for (let colOrigem = 0; colOrigem < 7; colOrigem++) {
             const tc = tableau[colOrigem];
             for (let idx = 0; idx < tc.length; idx++) {
@@ -513,25 +534,6 @@ function obterDica() {
                 }
             }
         }
-
-        if (waste.length) {
-            const c = waste[waste.length - 1];
-            for (let col = 0; col < 7; col++)
-                if (canMoveToTableau(c, col)) { list.add('card-waste-top'); break; }
-        }
-
-        let temCartaUtilNoMaco = false;
-        const cartasOcultas = [...stock];
-        if (waste.length > 1) cartasOcultas.push(...waste.slice(0, -1));
-
-        for (const c of cartasOcultas) {
-            for (let fi = 0; fi < 4; fi++) { if (canMoveToFoundation(c, fi)) { temCartaUtilNoMaco = true; break; } }
-            if (temCartaUtilNoMaco) break;
-            for (let col = 0; col < 7; col++) { if (canMoveToTableau(c, col)) { temCartaUtilNoMaco = true; break; } }
-            if (temCartaUtilNoMaco) break;
-        }
-
-        if (temCartaUtilNoMaco) list.add('stock');
 
         hintState.list = Array.from(list);
         hintState.moves = moves;
@@ -692,22 +694,50 @@ function checkWin() {
     clearInterval(timerInterval);
     gameWon = true;
 
-    // Só dá a vitória se o jogador não tiver apelado pro botão de misturar
     if (!hasMixed) {
         const totalVitorias = obterEstatistica('solitaire_win_count') + 1;
         localStorage.setItem('solitaire_win_count', totalVitorias.toString());
+
+        const currentBestMoves = localStorage.getItem('solitaire_best_moves');
+        if (!currentBestMoves || moves < parseInt(currentBestMoves)) {
+            localStorage.setItem('solitaire_best_moves', moves.toString());
+        }
+
+        const currentBestTime = localStorage.getItem('solitaire_best_time');
+        if (!currentBestTime || seconds < parseInt(currentBestTime)) {
+            localStorage.setItem('solitaire_best_time', seconds.toString());
+        }
+
         atualizarDisplayEstatisticas();
     }
 
     localStorage.removeItem('solitaire_saved_game');
 
+    // Formata o tempo atual
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
 
-    // Monta a mensagem de vitória
-    let winMsg = `Tempo: ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} · ${moves} movimentos`;
+    // Puxa os recordes atualizados da memória
+    const bestMoves = localStorage.getItem('solitaire_best_moves') || '--';
+    let bestTimeStr = '--:--';
+    const bestTime = localStorage.getItem('solitaire_best_time');
+    if (bestTime) {
+        const bm = Math.floor(bestTime / 60);
+        const bs = bestTime % 60;
+        bestTimeStr = `${String(bm).padStart(2,'0')}:${String(bs).padStart(2,'0')}`;
+    }
+
+    // Monta o texto do Modal
+    let winMsg = `<div style="margin-bottom: 15px;"><strong>Seu Desempenho:</strong><br>Tempo: ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} · ${moves} movimentos</div>`;
+
     if (hasMixed) {
-        winMsg += "<br><br><span style='color: #e11d48; font-size: 12px;'><em>(Esta vitória não contou no placar porque as cartas foram misturadas)</em></span>";
+        winMsg += `<span style='color: #e11d48; font-size: 13px; font-weight: 500;'><em>(Esta partida não contou pontos ou recordes pois as cartas foram misturadas)</em></span>`;
+    } else {
+        winMsg += `<div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px dashed #cbd5e1; color: #0f172a;">
+            <strong>🏅 Recordes Pessoais:</strong><br>
+            Melhor Tempo: ${bestTimeStr}<br>
+            Menos Movimentos: ${bestMoves}
+        </div>`;
     }
 
     document.getElementById('win-stats').innerHTML = winMsg;
