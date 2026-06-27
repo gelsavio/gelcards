@@ -977,3 +977,19 @@ function autoComplete() {
 }
 // INICIALIZADOR: Checa se tem jogo salvo antes de criar um novo
 carregarOuIniciarJogo();
+/* =========================================================
+   INVERSÃO DE LAYOUT
+========================================================= */
+function alternarLayout() {
+    document.body.classList.toggle('layout-invertido');
+    const isInvertido = document.body.classList.contains('layout-invertido');
+    localStorage.setItem('solitaire_layout_invertido', isInvertido.toString());
+}
+
+// Para aplicar o layout salvo assim que o jogo abrir, adicione 
+// este pequeno bloco no início do seu arquivo, logo após as variáveis:
+document.addEventListener('DOMContentLoaded', () => {
+    if (localStorage.getItem('solitaire_layout_invertido') === 'true') {
+        document.body.classList.add('layout-invertido');
+    }
+});

@@ -61,16 +61,32 @@ body {
     justify-content: flex-end;
 }
 
+
+/* =========================================================
+   NOVOS BOTÕES DE ÍCONES
+========================================================= */
+
 #controls button {
-    background: rgba(255, 255, 255, 0.14);
-    border: 0.5px solid rgba(255, 255, 255, 0.32);
-    color: #fff;
-    padding: 6px 12px;
-    border-radius: 7px;
-    font-size: 12px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background 0.15s;
+    font-size: 1.4rem;
+    /* Aumenta o tamanho dos emojis */
+    padding: 8px 12px;
+    min-width: 44px;
+    /* Garante que fiquem parecidos com botões quadrados */
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+
+/* =========================================================
+   INVERSÃO DE LAYOUT (CANHOTO / DESTRA)
+========================================================= */
+
+/* Inversão da área do topo (Fundações e Maço) */
+
+body.layout-invertido #board-top-wrapper {
+    flex-direction: row-reverse;
 }
 
 #controls button:hover {

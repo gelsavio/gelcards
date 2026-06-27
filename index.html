@@ -28,11 +28,12 @@
                 <span>💀 Derrotas: <span id="loss-count">0</span></span>
             </div>
             <div id="controls">
-                <button onclick="obterDica()">💡 Dica</button>
-                <button onclick="desfazerJogada()">↩ Voltar</button>
-                <button id="mix-btn" onclick="pedirRedistribuicao()">🔀 Misturar</button>
-                <button id="auto-btn" onclick="autoComplete()" style="display:none">Auto-completar ✓</button>
-                <button onclick="pedirNovoJogo()">Novo Jogo</button>
+                <button onclick="obterDica()" title="Dica">💡</button>
+                <button onclick="desfazerJogada()" title="Voltar">↩️</button>
+                <button id="mix-btn" onclick="pedirRedistribuicao()" title="Misturar">🔀</button>
+                <button id="auto-btn" onclick="autoComplete()" style="display:none" title="Autocompletar">✨</button>
+                <button onclick="alternarLayout()" title="Inverter Lado da Mesa">↔️</button>
+                <button onclick="pedirNovoJogo()" title="Novo Jogo">🔄</button>
             </div>
         </div>
 
@@ -92,7 +93,7 @@
 
     <div id="drag-ghost"></div>
 
-    <script src="app.js?v=1.1.5"></script>
+    <script src="app.js?v=1.1.6"></script>
     <script>
         let newWorker;
         if ('serviceWorker' in navigator) {
